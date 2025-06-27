@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-type Role = "admin" | "teacher" | "student" | null;
+export type Role = "admin" | "teacher" | "student" | null;
 
 export interface Person {
   firstName: string;
@@ -23,6 +23,22 @@ export interface Issue {
   message: string;
 }
 
+export interface Question {
+  question: string;
+  options: string[];
+  answer: string;
+}
+
+export interface Exam {
+  id: string;
+  teacherId: string;
+  subject: string;
+  date: string;
+  duration: number;
+  totalMarks: number;
+  questions: Question[];
+}
+
 interface UserStore {
   userId: string | null;
   role: Role;
@@ -30,14 +46,16 @@ interface UserStore {
   students: Person[];
   notifications: string[];
   issues: Issue[];
+  exams: Exam[];
 
-  // actions
+  // Actions
   login: (userId: string, role: Role) => void;
   logout: () => void;
   addTeacher: (data: Person) => void;
   addStudent: (data: Person) => void;
   addNotification: (note: string) => void;
   addIssue: (issue: Issue) => void;
+  addExam: (exam: Exam) => void;
 }
 
 export const useUserStore = create<UserStore>((set) => ({
@@ -47,6 +65,7 @@ export const useUserStore = create<UserStore>((set) => ({
   students: [],
   notifications: [],
   issues: [],
+  exams: [],
 
   login: (userId, role) => set({ userId, role }),
   logout: () => set({ userId: null, role: null }),
@@ -62,4 +81,7 @@ export const useUserStore = create<UserStore>((set) => ({
 
   addIssue: (issue) =>
     set((state) => ({ issues: [issue, ...state.issues] })),
+
+  addExam: (exam) =>
+    set((state) => ({ exams: [...state.exams, exam] })),
 }));

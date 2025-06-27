@@ -4,6 +4,7 @@ import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import TeacherProfile from "@/components/TeacherProfile";
 import SubjectStudents from "@/components/SubjectStudents";
+import AddExamForm from "@/components/AddExamForm";
 
 export default function TeacherDashboard() {
   const [tab, setTab] = useState<
@@ -23,6 +24,8 @@ export default function TeacherDashboard() {
         {tab === "syllabus" && <div>📖 Upload Syllabus Coming Soon</div>}
         {tab === "issue" && <div>❗ Issue Form Coming Soon</div>}
       </main>
+      {tab === "exam" && <AddExamForm />}
+
     </div>
   );
 }
