@@ -8,7 +8,7 @@ const router = Router();
 
 router.post("/login", (req: Request, res: Response) => {
   const { id, password } = req.body;
-
+                                                      
   if (id === "admin" && password === "admin123") {
     const token = jwt.sign({ id, role: "admin" }, process.env.JWT_SECRET as string, {
       expiresIn: "1d",
