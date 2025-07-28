@@ -49,12 +49,12 @@ export default function AdminNotificationsPage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-screen bg-gray-900">
       <Sidebar role="admin" />
-      <div className="flex-1 p-4 sm:p-8 w-full max-w-screen-lg mx-auto">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-6">Send Notification</h1>
+      <div className="flex-1 p-4 sm:p-8 w-full max-w-screen-lg mx-auto ">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-200">Send Notification</h1>
         
-        <form onSubmit={handleSubmit} className="space-y-4 bg-gray-800 shadow-md rounded p-4 sm:p-6">
+        <form onSubmit={handleSubmit} className="space-y-4 bg-gray-800 shadow-md rounded-xl text-gray-200 p-4 sm:p-6">
           <input
             type="text"
             placeholder="Title"
@@ -81,11 +81,11 @@ export default function AdminNotificationsPage() {
           {success && <p className="text-green-600 font-medium">✅ Notification sent successfully!</p>}
         </form>
 
-        <h2 className="text-xl font-semibold mt-10 mb-4">Previous Notifications</h2>
+        <h2 className="text-xl font-semibold mt-10 mb-4 text-gray-200">Previous Notifications</h2>
         <div className="space-y-4">
           {notifications.length === 0 && <p className="text-gray-500">No notifications yet.</p>}
           {notifications.map((note) => (
-            <div key={note.id} className="bg-gray-800 p-4 rounded shadow-sm">
+            <div key={note.id} className="bg-gray-800 p-4 rounded-xl text-gray-200 shadow-sm">
               <h3 className="text-lg font-bold">{note.title}</h3>
               <p className="text-gray-700">{note.message}</p>
               <p className="text-sm text-gray-500 mt-1">

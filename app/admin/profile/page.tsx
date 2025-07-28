@@ -31,7 +31,7 @@ export default function AdminProfilePage() {
   return (
     <div className="flex min-h-screen">
       <Sidebar role="admin" />
-      <main className="p-6 w-full">
+      <main className="p-6 w-full bg-gray-900">
         <h1 className="text-2xl font-bold mb-4">Admin Profile</h1>
         <div className="space-y-2 bg-white shadow p-4 rounded-md">
           <p><strong>Email:</strong> {user.email}</p>

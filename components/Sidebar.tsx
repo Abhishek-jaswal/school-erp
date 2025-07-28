@@ -45,14 +45,14 @@ export default function Sidebar({ role }: SidebarProps) {
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 h-screen bg-gray-100 p-6 shadow-md">
+    <aside className="w-64 h-screen bg-gray-800 p-6 shadow-md">
       <nav className="flex flex-col gap-4">
         {links.map((link) => (
           <Link
             key={link.name}
             href={link.path}
             className={`text-lg hover:text-blue-600 ${
-              pathname === link.path ? 'text-blue-600 font-semibold' : 'text-gray-700'
+              pathname === link.path ? 'text-blue-600 font-semibold' : 'text-gray-200'
             }`}
           >
             {link.name}

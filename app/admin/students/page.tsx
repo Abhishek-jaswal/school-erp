@@ -65,7 +65,7 @@ export default function AdminStudentsPage() {
     <div className="flex min-h-screen ">
       <Sidebar role="admin" />
 
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-6 space-y-6 bg-gray-900">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-200">Students</h1>
 

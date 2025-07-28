@@ -8,7 +8,7 @@ export default function AdminIssuesPage() {
     <div className="flex flex-col md:flex-row min-h-screen">
       <Sidebar role="admin" />
 
-      <main className="flex-1 p-4 md:p-6  w-full">
+      <main className="flex-1 p-4 md:p-6  w-full bg-gray-900">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-2xl md:text-3xl font-bold mb-4 text-gray-200">
             Reported Issues

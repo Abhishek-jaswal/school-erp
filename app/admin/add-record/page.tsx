@@ -2,7 +2,7 @@ import Sidebar from "@/components/Sidebar";
 
 export default function AdminAddRecordPage() {
   return (
-      <div  className="flex min-h-screen">
+      <div  className="flex min-h-screen bg-gray-900">
             <Sidebar role="admin" />
       <h1 className="text-2xl font-bold mb-4">Add Record</h1>
       <form className="space-y-4">
