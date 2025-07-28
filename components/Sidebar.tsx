@@ -1,4 +1,3 @@
-// components/Sidebar.tsx
 'use client'
 
 import React from 'react'
@@ -14,12 +13,13 @@ export default function Sidebar({ role }: SidebarProps) {
 
   if (role === 'admin') {
     links = [
-      { name: 'Profile', path: '/admin/profile' },
+      { name: 'Dashboard', path: '/admin/dashboard' },
       { name: 'Students', path: '/admin/students' },
-      { name: 'Add Exam', path: '/admin/add-exam' },
-      { name: "Today's Topic", path: '/admin/todays-topic' },
+      { name: 'Teachers', path: '/admin/teachers' },
+      { name: 'Add Record', path: '/admin/add-record' },
       { name: 'Issues', path: '/admin/issues' },
-      { name: 'Add Notification', path: '/admin/notification' },
+      { name: 'Notifications', path: '/admin/notifications' },
+      { name: 'Profile', path: '/admin/profile' },
       { name: 'Logout', path: '/logout' }
     ]
   } else if (role === 'teacher') {
