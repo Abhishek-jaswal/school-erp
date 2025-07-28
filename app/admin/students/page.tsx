@@ -62,15 +62,15 @@ export default function AdminStudentsPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen ">
       <Sidebar role="admin" />
 
       <div className="flex-1 p-6 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <h1 className="text-2xl font-bold text-gray-800">Students</h1>
+          <h1 className="text-2xl font-bold text-gray-200">Students</h1>
 
           <div className="flex flex-wrap items-center gap-4">
-            <span className="text-lg font-medium text-gray-700">
+            <span className="text-lg font-medium text-gray-200">
               Total: {filteredStudents.length}
             </span>
             <select
@@ -95,8 +95,8 @@ export default function AdminStudentsPage() {
         </div>
 
         <div className="overflow-x-auto rounded-lg shadow">
-          <table className="min-w-full bg-white text-sm text-gray-800">
-            <thead className="bg-gray-200">
+          <table className="min-w-full bg-gray-800 text-sm text-gray-200">
+            <thead className="bg-gray-700">
               <tr>
                 <th className="px-4 py-2 text-left">Name</th>
                 <th className="px-4 py-2 text-left">Email</th>
