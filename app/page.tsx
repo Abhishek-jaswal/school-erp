@@ -17,7 +17,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8">
+    <div className="min-h-screen flex flex-col bg-gray-800 items-center justify-center gap-4 p-8">
       <input
         placeholder="Username"
         value={username}

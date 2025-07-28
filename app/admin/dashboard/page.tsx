@@ -31,13 +31,13 @@ export default function AdminDashboard() {
     <div className="flex min-h-screen">
       <Sidebar role="admin" />
 
-      <main className="flex-1 p-6">
-        <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
+      <main className="flex-1 p-6 bg-gray-900 text-gray-200 ">
+        <h1 className="text-2xl text-gray-200 font-bold mb-6">Admin Dashboard</h1>
 
         <div className="flex gap-6 mb-8">
           <button
             onClick={() => setShowTeacherModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
           >
             ➕ Add Teacher
           </button>
