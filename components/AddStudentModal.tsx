@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 
 interface Props {
   onClose: () => void
+   onStudentAdded: () => void 
 }
 
 export default function AddStudentModal({ onClose }: Props) {

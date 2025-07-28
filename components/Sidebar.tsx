@@ -20,7 +20,7 @@ export default function Sidebar({ role }: SidebarProps) {
       { name: 'Issues', path: '/admin/issues' },
       { name: 'Notifications', path: '/admin/notifications' },
       { name: 'Profile', path: '/admin/profile' },
-      { name: 'Logout', path: '/logout' }
+      { name: 'Logout', path: '/' }
     ]
   } else if (role === 'teacher') {
     links = [
