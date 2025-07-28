@@ -21,7 +21,7 @@ export default function AddStudentModal({ onClose }: Props) {
     education: '',
     subject: '',
     number: '',
-    custom_id: '',
+    username: '',
     password: ''
   })
 
@@ -58,7 +58,7 @@ export default function AddStudentModal({ onClose }: Props) {
             <option value="IT">IT</option>
           </select>
           <input name="number" onChange={handleChange} placeholder="Number" className="border p-2 rounded" />
-          <input name="custom_id" onChange={handleChange} placeholder="ID" className="border p-2 rounded" />
+          <input name="username" onChange={handleChange} placeholder="ID" className="border p-2 rounded" />
           <input name="password" type="password" onChange={handleChange} placeholder="Password" className="border p-2 rounded" />
         </div>
 
