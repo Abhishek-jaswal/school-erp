@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import AddTeacherModal from '@/components/AddTeacherModal'
-import Sidebar from '@/components/Sidebar'
 
 interface Teacher {
   id: string
@@ -62,8 +61,7 @@ export default function AdminTeachersPage() {
 
   return (
     <div className="flex min-h-screen ">
-      <Sidebar role="admin" />
-
+ 
       <div className="flex-1 p-6 space-y-6 bg-gray-900">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-200">Teachers</h1>
@@ -105,7 +103,7 @@ export default function AdminTeachersPage() {
                 <th className="px-4 py-2 text-left">Aadhar</th>
                 <th className="px-4 py-2 text-left">Alternate</th>
                 <th className="px-4 py-2 text-left">Education</th>
-                <th className="px-4 py-2 text-left">Number</th>
+                <th className="px-4 py-2 text-left">Family Number</th>
               </tr>
             </thead>
             <tbody className="text-sm text-gray-200">

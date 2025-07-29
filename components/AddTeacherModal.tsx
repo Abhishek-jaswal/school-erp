@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
 interface Props {
   onClose: () => void
-  onTeacherAdded: () => void // ✅ New prop
+  onTeacherAdded: () => void
 }
 
 export default function AddTeacherModal({ onClose, onTeacherAdded }: Props) {
@@ -19,28 +19,56 @@ export default function AddTeacherModal({ onClose, onTeacherAdded }: Props) {
     alternatenumber: '',
     education: '',
     subject: '',
-    number: '',
-   username: '',
-    password: ''
+    username: '',
+    password: '',
+    number: ''
   })
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
+  const [loadingId, setLoadingId] = useState(false)
+
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target
+    setForm(prev => ({ ...prev, [name]: value }))
+
+    if (name === 'subject') {
+      await generateUsername(value)
+    }
+  }
+
+  const generateUsername = async (subject: string) => {
+    if (!subject) return
+
+    setLoadingId(true)
+    const subjectCode = subject.toUpperCase().substring(0, 3) // IT → IT, Math → MAT
+    const prefix = `UI${subjectCode}`
+
+    const { data, error } = await supabase
+      .from('teachers')
+      .select('id', { count: 'exact' })
+      .eq('subject', subject)
+
+    const count = data?.length || 0
+    const nextNumber = (count + 1).toString().padStart(3, '0')
+    const generatedId = `${prefix}${nextNumber}`
+
+    setForm(prev => ({ ...prev, username: generatedId }))
+    setLoadingId(false)
   }
 
   const handleSave = async () => {
     const { data, error } = await supabase.from('teachers').insert([{ ...form }])
     if (error) {
       console.error(error)
+      alert("Error saving teacher.")
     } else {
-      onTeacherAdded() // ✅ Trigger refresh
+      onTeacherAdded()
       onClose()
     }
   }
 
   return (
     <div className="fixed inset-0 bg-gray-900 bg-opacity-30 flex items-center justify-center z-50">
-      <div className="p-6  bg-gray-800  rounded-xl shadow-xl w-full max-w-xl text-gray-200">
+      <div className="p-6 bg-gray-800 rounded-xl shadow-xl w-full max-w-xl text-gray-200">
         <h2 className="text-xl font-bold mb-4">Add New Teacher</h2>
 
         <div className="grid grid-cols-2 gap-4">
@@ -51,6 +79,8 @@ export default function AddTeacherModal({ onClose, onTeacherAdded }: Props) {
           <input name="address" onChange={handleChange} placeholder="Address" className="border p-2 rounded" />
           <input name="adharnumber" onChange={handleChange} placeholder="Aadhar Number" className="border p-2 rounded" />
           <input name="alternatenumber" onChange={handleChange} placeholder="Alternate Number" className="border p-2 rounded" />
+          <input name="number" onChange={handleChange} placeholder="Family Number" className="border p-2 rounded" />
+
           <input name="education" onChange={handleChange} placeholder="Education" className="border p-2 rounded" />
           <select name="subject" onChange={handleChange} className="border p-2 rounded">
             <option value="">Select Subject</option>
@@ -60,8 +90,13 @@ export default function AddTeacherModal({ onClose, onTeacherAdded }: Props) {
             <option value="Chemistry">Chemistry</option>
             <option value="IT">IT</option>
           </select>
-          <input name="number" onChange={handleChange} placeholder="Number" className="border p-2 rounded" />
-          <input name="username" onChange={handleChange} placeholder=" ID" className="border p-2 rounded" />
+          <input
+            name="username"
+            value={loadingId ? 'Generating...' : form.username}
+            readOnly
+            placeholder="Auto-generated ID"
+            className="border p-2 rounded bg-gray-600 text-white"
+          />
           <input name="password" type="password" onChange={handleChange} placeholder="Password" className="border p-2 rounded" />
         </div>
 

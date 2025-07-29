@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import Sidebar from "@/components/Sidebar";
 
 export default function AdminProfilePage() {
   const [user, setUser] = useState<any>(null);
@@ -30,7 +29,6 @@ export default function AdminProfilePage() {
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar role="admin" />
       <main className="p-6 w-full bg-gray-900">
         <h1 className="text-2xl font-bold mb-4">Admin Profile</h1>
         <div className="space-y-2 bg-white shadow p-4 rounded-md">

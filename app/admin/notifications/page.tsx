@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import Sidebar from '@/components/Sidebar';
 
 export default function AdminNotificationsPage() {
   const [title, setTitle] = useState('');
@@ -50,7 +49,6 @@ export default function AdminNotificationsPage() {
 
   return (
     <div className="flex min-h-screen bg-gray-900">
-      <Sidebar role="admin" />
       <div className="flex-1 p-4 sm:p-8 w-full max-w-screen-lg mx-auto ">
         <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-200">Send Notification</h1>
         
