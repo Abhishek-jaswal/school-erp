@@ -28,6 +28,7 @@ export default function Sidebar({ role }: SidebarProps) {
     links = [
       { name: 'Profile', path: '/teacher/dashboard' },
       { name: 'Students', path: '/teacher/students' },
+      { name: 'Notifications', path: '/teacher/notifications' },
       { name: 'Add Exam', path: '/teacher/add-exam' },
       { name: "Today's Topic", path: '/teacher/todays-topic' },
       { name: 'Add Syllabus', path: '/teacher/syllabus' },
