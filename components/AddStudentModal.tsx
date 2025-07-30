@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import bcrypt from 'bcryptjs'
 
 interface Props {
   onClose: () => void
@@ -25,6 +26,7 @@ export default function AddStudentModal({ onClose, onStudentAdded }: Props) {
   })
 
   const [loadingId, setLoadingId] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   const handleChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -48,7 +50,7 @@ export default function AddStudentModal({ onClose, onStudentAdded }: Props) {
       .eq('subject', subject)
 
     const count = data?.length || 0
-    const nextNumber = (count + 11).toString().padStart(3, '0') // Starts at 011
+    const nextNumber = (count + 11).toString().padStart(3, '0')
     const generatedId = `${prefix}${nextNumber}`
 
     setForm(prev => ({ ...prev, username: generatedId }))
@@ -61,13 +63,29 @@ export default function AddStudentModal({ onClose, onStudentAdded }: Props) {
       return
     }
 
-    const { data, error } = await supabase.from('students').insert([{ ...form }])
-    if (error) {
-      console.error(error)
-      alert('Error adding student.')
-    } else {
-      onStudentAdded()
-      onClose()
+    setSaving(true)
+    try {
+      const hashedPassword = await bcrypt.hash(form.password, 10)
+
+      const { error } = await supabase.from('students').insert([
+        {
+          ...form,
+          password: hashedPassword
+        }
+      ])
+
+      if (error) {
+        console.error(error)
+        alert('Error adding student.')
+      } else {
+        onStudentAdded()
+        onClose()
+      }
+    } catch (err) {
+      console.error(err)
+      alert('Unexpected error occurred.')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -106,7 +124,9 @@ export default function AddStudentModal({ onClose, onStudentAdded }: Props) {
 
         <div className="flex justify-end gap-2 mt-6">
           <button onClick={onClose} className="px-4 py-2 bg-blue-600 text-white rounded">Cancel</button>
-          <button onClick={handleSave} className="px-4 py-2 bg-green-600 text-white rounded">Save</button>
+          <button onClick={handleSave} disabled={saving} className="px-4 py-2 bg-green-600 text-white rounded">
+            {saving ? 'Saving...' : 'Save'}
+          </button>
         </div>
       </div>
     </div>
