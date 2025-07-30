@@ -21,6 +21,7 @@ export default function Sidebar({ role }: SidebarProps) {
       { name: 'Students', path: '/admin/students' },
       { name: 'Teachers', path: '/admin/teachers' },
       { name: 'Issues', path: '/admin/issues' },
+            { name: "Today's Topic", path: '/admin/todays-topic' },
       { name: 'Notifications', path: '/admin/notifications' },
       { name: 'Logout', path: '/' }
     ]
