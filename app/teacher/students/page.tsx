@@ -12,25 +12,19 @@ export default function TeacherStudents() {
   useEffect(() => {
     const fetchStudents = async () => {
       setLoading(true)
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
 
-      if (userError || !user?.id) {
-        console.error('No logged-in teacher.')
+      const teacherData = localStorage.getItem('user')
+      if (!teacherData) {
+        console.error('No teacher found in localStorage.')
         setLoading(false)
         return
       }
 
-      const { data: teacher, error: teacherError } = await supabase
-        .from('teachers')
-        .select('subject')
-        .eq('user_id', user.id)
-        .single()
+      const teacher = JSON.parse(teacherData)
+      const subject = teacher.subject
 
-      if (teacherError || !teacher?.subject) {
-        console.error('Teacher subject not found.')
+      if (!subject) {
+        console.error('No subject assigned to teacher.')
         setLoading(false)
         return
       }
@@ -38,7 +32,7 @@ export default function TeacherStudents() {
       const { data: matchedStudents, error: studentError } = await supabase
         .from('students')
         .select('*')
-        .eq('subject', teacher.subject)
+        .eq('subject', subject)
 
       if (studentError) {
         console.error('Error fetching students:', studentError.message)
@@ -67,7 +61,7 @@ export default function TeacherStudents() {
               className="bg-white shadow p-4 rounded-lg flex justify-between items-center"
             >
               <div>
-                <div className="text-lg font-semibold">{s.firstname}</div>
+                <div className="text-lg font-semibold">{s.firstname} {s.lastname}</div>
                 <div className="text-gray-600">
                   <strong>Username:</strong> {s.username || 'Not Assigned'}
                 </div>
@@ -93,10 +87,11 @@ export default function TeacherStudents() {
           <div className="bg-white p-6 rounded-lg w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Student Details</h2>
             <div><strong>Username:</strong> {selectedStudent.username || 'Not Assigned'}</div>
-            <div><strong>Name:</strong> {selectedStudent.firstname}</div>
+            <div><strong>Name:</strong> {selectedStudent.firstname} {selectedStudent.lastname}</div>
             <div><strong>Email:</strong> {selectedStudent.email}</div>
             <div><strong>Subject:</strong> {selectedStudent.subject}</div>
             <div><strong>Contact:</strong> {selectedStudent.contact}</div>
+             <div><strong>Family Contact:</strong> {selectedStudent.number}</div>
             <div><strong>Address:</strong> {selectedStudent.address}</div>
             <div><strong>Joining Date:</strong> {dayjs(selectedStudent.created_at).format('DD MMM YYYY')}</div>
             <button
