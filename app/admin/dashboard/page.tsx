@@ -1,6 +1,5 @@
 "use client"
 
-import Sidebar from '@/components/Sidebar'
 import { useEffect, useState } from 'react'
 import AddTeacherModal from '@/components/AddTeacherModal'
 import AddStudentModal from '@/components/AddStudentModal'
@@ -29,8 +28,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar role="admin" />
-
+   
       <main className="flex-1 p-6 bg-gray-900 text-gray-200 ">
         <h1 className="text-2xl text-gray-200 font-bold mb-6">Admin Dashboard</h1>
 
