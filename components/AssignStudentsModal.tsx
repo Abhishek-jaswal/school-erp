@@ -1,51 +1,25 @@
 'use client'
-
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export default function AssignStudentsModal({ exam, onClose }: any) {
-  const [students, setStudents] = useState<any[]>([])
-  const [selected, setSelected] = useState<string[]>([])
+  const [list, setList] = useState<any[]>([])
+  const [sel, setSel] = useState<string[]>([])
 
-  useEffect(() => {
-    const fetchStudents = async () => {
-      const { data } = await supabase.from('students').select('*')
-      setStudents(data || [])
-    }
-    fetchStudents()
-  }, [])
+  useEffect(()=> { supabase.from('students').select('*').then(r=>setList(r.data||[])); }, [])
 
   const assign = async () => {
-    const insertData = selected.map((student_id) => ({
-      exam_id: exam.id,
-      student_id,
-    }))
-    await supabase.from('exam_assignments').insert(insertData)
-    onClose()
+    await supabase.from('exam_assignments').insert(sel.map(sid=>({exam_id: exam.id, student_id: sid})))
+    alert('Assigned'); onClose()
   }
 
   return (
     <div className="modal">
-      <div className="modal-content">
-        <h2 className="font-bold mb-2">👤 Assign Students to {exam.topic}</h2>
-        <div className="max-h-60 overflow-auto space-y-2">
-          {students.map((s) => (
-            <label key={s.id} className="block">
-              <input
-                type="checkbox"
-                checked={selected.includes(s.id)}
-                onChange={() => {
-                  if (selected.includes(s.id)) setSelected(selected.filter((id) => id !== s.id))
-                  else setSelected([...selected, s.id])
-                }}
-              />{' '}
-              {s.name} ({s.email})
-            </label>
-          ))}
-        </div>
-        <button className="btn mt-4" onClick={assign}>Assign</button>
-        <button className="btn-outline mt-2" onClick={onClose}>Close</button>
-      </div>
+      {list.map(s=>(
+        <label key={s.id}><input type="checkbox" checked={sel.includes(s.id)} onChange={()=>setSel(sel.includes(s.id)?sel.filter(i=>i!==s.id):[...sel,s.id])} />{s.name}</label>
+      ))}
+      <button onClick={assign}>Assign</button>
+      <button onClick={onClose}>Close</button>
     </div>
   )
 }

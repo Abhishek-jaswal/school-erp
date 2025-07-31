@@ -1,42 +1,33 @@
 'use client'
-
 import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
-export default function AddQuestionsModal({ exam, onClose }: any) {
-  const [question, setQuestion] = useState('')
-  const [options, setOptions] = useState(['', '', '', ''])
+export default function AddQuestionModal({ exam, onClose }: any) {
+  const [text, setText] = useState('')
+  const [ops, setOps] = useState(['', '', '', ''])
   const [correct, setCorrect] = useState('')
 
-  const handleAdd = async () => {
+  const handle = async () => {
     await supabase.from('questions').insert({
       exam_id: exam.id,
-      question,
-      options,
+      question_text: text,
+      option_a: ops[0],
+      option_b: ops[1],
+      option_c: ops[2],
+      option_d: ops[3],
       correct_option: correct,
     })
-
-    setQuestion('')
-    setOptions(['', '', '', ''])
-    setCorrect('')
+    setText(''); setOps(['','','','']); setCorrect('')
+    alert('Added')
   }
 
   return (
     <div className="modal">
-      <div className="modal-content">
-        <h2 className="text-lg font-bold mb-2">➕ Add Question for {exam.topic}</h2>
-        <textarea className="input" placeholder="Question" value={question} onChange={(e) => setQuestion(e.target.value)} />
-        {options.map((opt, i) => (
-          <input key={i} className="input" placeholder={`Option ${i + 1}`} value={opt} onChange={(e) => {
-            const newOpts = [...options]
-            newOpts[i] = e.target.value
-            setOptions(newOpts)
-          }} />
-        ))}
-        <input className="input" placeholder="Correct Option (1/2/3/4)" value={correct} onChange={(e) => setCorrect(e.target.value)} />
-        <button className="btn" onClick={handleAdd}>Add</button>
-        <button className="btn-outline mt-2" onClick={onClose}>Close</button>
-      </div>
+      <textarea placeholder="Question" value={text} onChange={e=>setText(e.target.value)} />
+      {ops.map((o,i)=>(<input key={i} placeholder={`Option ${i+1}`} value={o} onChange={e=>{const n=[...ops];n[i]=e.target.value;setOps(n)}} />))}
+      <input placeholder="Correct (A‑D)" value={correct} onChange={e=>setCorrect(e.target.value)} />
+      <button onClick={handle}>Add</button>
+      <button onClick={onClose}>Close</button>
     </div>
   )
 }
