@@ -1,44 +1,83 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
-import ExamTable from '@/components/ExamTable'
 
 export default function AddExam() {
-  const [form, setForm] = useState({ topic: '', date: '', duration: '', total_marks: '' })
-  const [refresh, setRefresh] = useState(false)
+  const [examName, setExamName] = useState('')
+  const [date, setDate] = useState('')
+  const [subject, setSubject] = useState('')
+  const [userData, setUserData] = useState<any>(null)
 
-  const handleAdd = async () => {
-    const { data: userData } = await supabase.auth.getUser()
-    const { data: teacher } = await supabase.from('teachers').select('subject').eq('user_id', userData.user?.id).single()
+  useEffect(() => {
+    const getUser = async () => {
+      const { data } = await supabase.auth.getUser()
+      setUserData(data)
+    }
 
-    const { error } = await supabase.from('exams').insert({
-      ...form,
-      subject: teacher?.subject,
-      teacher_id: userData.user?.id,
-    })
+    getUser()
+  }, [])
 
-    if (!error) {
-      alert('✅ Exam Added')
-      setForm({ topic: '', date: '', duration: '', total_marks: '' })
-      setRefresh(!refresh)
+  const handleSubmit = async (e: any) => {
+    e.preventDefault()
+
+    if (!userData?.user) return alert('Not logged in.')
+
+    // Fetch teacher ID and subject
+    const { data: teacher } = await supabase
+      .from('teachers')
+      .select('id, subject')
+      .eq('user_id', userData.user.id)
+      .single()
+
+    if (!teacher) return alert('Teacher not found.')
+
+    const { error } = await supabase.from('exams').insert([
+      {
+        exam_name: examName,
+        date,
+        subject: teacher.subject,
+        teacher_id: teacher.id,
+      },
+    ])
+
+    if (error) {
+      console.error(error)
+      alert('Error adding exam')
+    } else {
+      alert('Exam added successfully')
+      setExamName('')
+      setDate('')
+      setSubject('')
     }
   }
 
   return (
-    <div className="pl-64 p-8">
-      <h1 className="text-2xl font-bold mb-4">➕ Add Exam</h1>
-      <div className="space-y-4 max-w-md">
-        <input className="input" placeholder="Topic" value={form.topic} onChange={(e) => setForm({ ...form, topic: e.target.value })} />
-        <input type="date" className="input" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
-        <input className="input" placeholder="Duration" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} />
-        <input type="number" className="input" placeholder="Total Marks" value={form.total_marks} onChange={(e) => setForm({ ...form, total_marks: e.target.value })} />
-        <button onClick={handleAdd} className="btn">Submit</button>
-      </div>
-
-      <div className="mt-10">
-        <ExamTable refresh={refresh} />
-      </div>
+    <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md">
+      <h2 className="text-xl font-semibold mb-4">Add Exam</h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <input
+          type="text"
+          placeholder="Exam Name"
+          className="w-full p-2 border rounded"
+          value={examName}
+          onChange={(e) => setExamName(e.target.value)}
+          required
+        />
+        <input
+          type="date"
+          className="w-full p-2 border rounded"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          required
+        />
+        <button
+          type="submit"
+          className="bg-blue-500 text-white px-4 py-2 rounded"
+        >
+          Add Exam
+        </button>
+      </form>
     </div>
   )
 }
