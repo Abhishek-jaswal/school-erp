@@ -1,63 +1,53 @@
 'use client'
-
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import AddQuestionModal from './AddQuestionModal'
 import AssignStudentsModal from './AssignStudentsModal'
-import AddQuestionsModal from './AddQuestionModal'
 import ViewExamModal from './ViewExamModal'
 
 export default function ExamTable({ refresh }: { refresh: boolean }) {
   const [exams, setExams] = useState<any[]>([])
-  const [selectedExam, setSelectedExam] = useState<any>(null)
-  const [mode, setMode] = useState<'questions' | 'students' | 'view' | null>(null)
+  const [selected, setSelected] = useState<{ exam: any, mode: 'view'|'questions'|'students' } | null>(null)
 
   useEffect(() => {
-    const fetchExams = async () => {
-      const { data: userData } = await supabase.auth.getUser()
-      const { data } = await supabase.from('exams').select('*').eq('teacher_id', userData.user?.id).order('date', { ascending: false })
+    const load = async () => {
+      const { data: user } = await supabase.auth.getUser()
+      const { data: teacher } = await supabase
+        .from('teachers')
+        .select('id')
+        .eq('user_id', user?.user?.id)
+        .single()
+      if (!teacher) return setExams([])
+      const { data } = await supabase.from('exams').select('*').eq('teacher_id', teacher.id).order('created_at', { ascending: false })
       setExams(data || [])
     }
-    fetchExams()
+    load()
   }, [refresh])
 
-  const openModal = (exam: any, type: 'questions' | 'students' | 'view') => {
-    setSelectedExam(exam)
-    setMode(type)
-  }
-
   return (
-    <div>
-      <h2 className="text-xl font-bold mb-4">📚 Exams</h2>
-      <table className="w-full border">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="p-2">Topic</th>
-            <th className="p-2">Date</th>
-            <th className="p-2">Duration</th>
-            <th className="p-2">Marks</th>
-            <th className="p-2">Actions</th>
-          </tr>
-        </thead>
+    <>
+      <table className="w-full table-auto border">
+        <thead><tr><th>Topic</th><th>Date</th><th>Duration</th><th>Marks</th><th>Actions</th></tr></thead>
         <tbody>
-          {exams.map((exam) => (
-            <tr key={exam.id} className="border-t">
-              <td className="p-2">{exam.topic}</td>
-              <td className="p-2">{exam.date}</td>
-              <td className="p-2">{exam.duration}</td>
-              <td className="p-2">{exam.total_marks}</td>
-              <td className="p-2 space-x-2">
-                <button className="btn-sm" onClick={() => openModal(exam, 'questions')}>➕ Add Qs</button>
-                <button className="btn-sm" onClick={() => openModal(exam, 'students')}>👤 Assign</button>
-                <button className="btn-sm" onClick={() => openModal(exam, 'view')}>👁️ View</button>
+          {exams.map(ex => (
+            <tr key={ex.id}>
+              <td>{ex.topic}</td>
+              <td>{ex.date}</td>
+              <td>{ex.duration}</td>
+              <td>{ex.total_marks}</td>
+              <td>
+                <button onClick={() => setSelected({exam: ex, mode: 'questions'})}>➕ Questions</button>
+                <button onClick={() => setSelected({exam: ex, mode: 'students'})}>👤 Assign</button>
+                <button onClick={() => setSelected({exam: ex, mode: 'view'})}>👁️ View</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
 
-      {mode === 'questions' && selectedExam && <AddQuestionsModal exam={selectedExam} onClose={() => setMode(null)} />}
-      {mode === 'students' && selectedExam && <AssignStudentsModal exam={selectedExam} onClose={() => setMode(null)} />}
-      {mode === 'view' && selectedExam && <ViewExamModal exam={selectedExam} onClose={() => setMode(null)} />}
-    </div>
+      {selected?.mode === 'questions' && <AddQuestionModal exam={selected.exam} onClose={() => setSelected(null)} />}
+      {selected?.mode === 'students' && <AssignStudentsModal exam={selected.exam} onClose={() => setSelected(null)} />}
+      {selected?.mode === 'view' && <ViewExamModal exam={selected.exam} onClose={() => setSelected(null)} />}
+    </>
   )
 }
