@@ -20,7 +20,7 @@ export default function AddUserModal({ role, onClose }: Props) {
     alternate_contact: '',
     education: '',
     subject: 'Math',
-    teacher_id: '',
+    
     password: ''
   });
 
@@ -31,23 +31,62 @@ export default function AddUserModal({ role, onClose }: Props) {
   };
 
   const handleSubmit = async () => {
-    if (!form.password) return alert('Password required');
-    const hashedPassword = await bcrypt.hash(form.password, 10);
+  if (!form.password) return alert('Password required');
+  const hashedPassword = await bcrypt.hash(form.password, 10);
 
-    const { error } = await supabase.from(role).insert([
-      {
-        ...form,
-        [`${role.slice(0, -1)}_id`]: form.id,
-        password: hashedPassword
-      }
-    ]);
-
-    if (error) {
-      alert('Failed to add: ' + error.message);
-    } else {
-      onClose();
-    }
+  // Step 1: Create a subject → prefix map
+  const prefixMap: any = {
+    IT: 'IT',
+    English: 'ENG',
+    Math: 'MATH',
+    Physics: 'PHY',
+    Chemistry: 'CHEM',
   };
+
+  const prefix = prefixMap[form.subject];
+  const idField = `${role.slice(0, -1)}_id`; // 'teacher_id' or 'student_id'
+
+  // Step 2: Fetch the last matching ID
+  const { data: existing, error: fetchError } = await supabase
+    .from(role)
+    .select(idField)
+    .ilike(idField, `${prefix}%`)
+    .order(idField, { ascending: false })
+    .limit(1);
+
+  if (fetchError) {
+    alert('Error checking IDs: ' + fetchError.message);
+    return;
+  }
+
+  // Step 3: Generate new ID
+  let newId: string;
+  if (!existing || existing.length === 0) {
+    newId = role === 'teachers' ? `${prefix}001` : `${prefix}0011`;
+  } else {
+    const lastId = existing[0][idField];
+    const num = parseInt(lastId.replace(/\D/g, ''), 10);
+    const nextNum = (num + 1).toString().padStart(3, '0');
+    newId = role === 'teachers' ? `${prefix}${nextNum}` : `${prefix}${nextNum}1`;
+  }
+
+  // Step 4: Insert with auto-generated ID
+  const { error } = await supabase.from(role).insert([
+    {
+      ...form,
+      [idField]: newId,
+      password: hashedPassword,
+    },
+  ]);
+
+  if (error) {
+    alert('Failed to add: ' + error.message);
+  } else {
+    alert(`${role.slice(0, -1)} added with ID: ${newId}`);
+    onClose();
+  }
+};
+
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
