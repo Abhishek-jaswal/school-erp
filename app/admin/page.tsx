@@ -38,9 +38,9 @@ export default function AdminDashboard() {
         <h2 className="text-xl font-bold">Admin Panel</h2>
         <button onClick={() => setTab('teachers')} className="block w-full text-left">Teachers</button>
         <button onClick={() => setTab('students')} className="block w-full text-left">Students</button>
-        <button onClick={() => alert('Coming soon')}>Notifications</button>
-        <button onClick={() => alert('Coming soon')}>Issues</button>
-        <button onClick={() => location.replace('/login')}>Logout</button>
+        <button onClick={() => alert('Coming soon')} className="block w-full text-left">Notifications</button>
+        <button onClick={() => alert('Coming soon')}className="block w-full text-left">Issues</button>
+        <button onClick={() => location.replace('/login')}className="block w-full text-left">Logout</button>
       </div>
 
       {/* Main Content */}
