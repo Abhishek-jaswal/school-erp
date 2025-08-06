@@ -10,6 +10,7 @@ import AddSyllabusSection from '@/components/teacher/AddSyllabusSection';
 import TodaysTopicSection from '@/components/teacher/TodaysTopicSection';
 import IssueForm from '@/components/IssueForm';
 import StudentScoresPanel from '@/components/teacher/StudentScoresPanel';
+import NotificationsList from '@/components/NotificationsList';
 
 export default function TeacherDashboard() {
   const [section, setSection] = useState('profile');
@@ -51,6 +52,8 @@ export default function TeacherDashboard() {
         <button onClick={() => setSection('syllabus')} className="block w-full text-left">Add Syllabus</button>
         <button onClick={() => setSection('topic')} className="block w-full text-left">Today’s Topic</button>
         <button onClick={() => setSection('issue')} className="block w-full text-left">Raise Issue</button>
+                        <button onClick={() => setSection('notification')} className="block w-full text-left">Notifications</button>
+
         <button onClick={() => setSection('scores')} className="block w-full text-left">Exam Score</button>
         <button onClick={() => router.push('/login')} className="block w-full text-left">Logout</button>
       </div>
@@ -64,6 +67,8 @@ export default function TeacherDashboard() {
         {section === 'topic' && <TodaysTopicSection teacher={teacher} />}
         {section === 'issue' && <IssueForm role="teacher" userId={teacher.id} />}
         {section === 'scores' && <StudentScoresPanel teacher={teacher} />}
+                {section === 'notification' && <NotificationsList/>}
+        
 
       </div>
     </div>

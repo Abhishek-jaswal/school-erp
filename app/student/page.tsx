@@ -7,6 +7,7 @@ import ProfileSection from '@/components/student/ProfileSection';
 import SyllabusView from '@/components/student/SyllabusView';
 import ExamView from '@/components/student/ExamView';
 import IssueForm from '@/components/IssueForm';
+import NotificationsList from '@/components/NotificationsList';
 
 export default function StudentDashboard() {
   const [section, setSection] = useState('profile');
@@ -45,6 +46,7 @@ export default function StudentDashboard() {
         <button onClick={() => setSection('syllabus')} className="block w-full text-left">Syllabus</button>
         <button onClick={() => setSection('exams')} className="block w-full text-left">Exams</button>
         <button onClick={() => setSection('issue')} className="block w-full text-left">Raise Issue</button>
+                <button onClick={() => setSection('notification')} className="block w-full text-left">Notifications</button>
         <button onClick={() => router.push('/login')} className="block w-full text-left">Logout</button>
       </div>
 
@@ -54,6 +56,7 @@ export default function StudentDashboard() {
         {section === 'syllabus' && <SyllabusView subject={student.subject} />}
         {section === 'exams' && <ExamView student={student} />}
         {section === 'issue' && <IssueForm role="student" userId={student.id} />}
+        {section === 'notification' && <NotificationsList/>}
       </div>
     </div>
   );
