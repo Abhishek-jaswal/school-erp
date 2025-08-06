@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
 interface Props {
@@ -13,14 +13,29 @@ export default function AddExamSection({ teacher }: Props) {
     exam_date: '',
     duration: '',
     total_marks: '',
+    student_ids: [] as string[],
     questions: [
       { question: '', options: ['', '', '', ''], answer: '' },
     ],
   });
 
+  const [students, setStudents] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  useEffect(() => {
+    const fetchStudents = async () => {
+      const { data } = await supabase
+        .from('students')
+        .select('id, first_name, last_name, subject')
+        .eq('subject', teacher.subject);
+
+      setStudents(data || []);
+    };
+
+    fetchStudents();
+  }, [teacher.subject]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
@@ -50,7 +65,20 @@ export default function AddExamSection({ teacher }: Props) {
     setForm({ ...form, questions: updated });
   };
 
+  const handleStudentToggle = (id: string) => {
+    const updated = form.student_ids.includes(id)
+      ? form.student_ids.filter((sid) => sid !== id)
+      : [...form.student_ids, id];
+
+    setForm({ ...form, student_ids: updated });
+  };
+
   const handleSubmit = async () => {
+    if (form.student_ids.length === 0) {
+      alert('Please select at least one student.');
+      return;
+    }
+
     setLoading(true);
 
     const { error } = await supabase.from('exams').insert([
@@ -60,6 +88,7 @@ export default function AddExamSection({ teacher }: Props) {
         exam_date: form.exam_date,
         duration: form.duration,
         total_marks: form.total_marks,
+        student_ids: form.student_ids,
         questions: form.questions,
       },
     ]);
@@ -67,12 +96,13 @@ export default function AddExamSection({ teacher }: Props) {
     if (error) {
       alert('Failed to create exam: ' + error.message);
     } else {
-      alert('Exam scheduled successfully!');
+      alert('✅ Exam scheduled successfully!');
       setForm({
         subject: teacher.subject,
         exam_date: '',
         duration: '',
         total_marks: '',
+        student_ids: [],
         questions: [{ question: '', options: ['', '', '', ''], answer: '' }],
       });
     }
@@ -81,36 +111,55 @@ export default function AddExamSection({ teacher }: Props) {
   };
 
   return (
-    <div className="space-y-6 max-w-3xl mx-auto">
-      <h2 className="text-2xl font-bold">Schedule New Exam</h2>
+    <div className="space-y-6 max-w-4xl mx-auto p-4 md:p-6">
+      <h2 className="text-2xl font-bold">📅 Schedule New Exam</h2>
 
-      <input
-        name="exam_date"
-        type="date"
-        value={form.exam_date}
-        onChange={handleChange}
-        className="w-full border p-2 rounded"
-      />
+      <div className="grid md:grid-cols-2 gap-4">
+        <input
+          name="exam_date"
+          type="date"
+          value={form.exam_date}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        />
 
-      <input
-        name="duration"
-        placeholder="Duration (e.g., 60 mins)"
-        value={form.duration}
-        onChange={handleChange}
-        className="w-full border p-2 rounded"
-      />
+        <input
+          name="duration"
+          placeholder="Duration (e.g., 60 mins)"
+          value={form.duration}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        />
 
-      <input
-        name="total_marks"
-        placeholder="Total Marks"
-        value={form.total_marks}
-        onChange={handleChange}
-        className="w-full border p-2 rounded"
-      />
+        <input
+          name="total_marks"
+          placeholder="Total Marks"
+          value={form.total_marks}
+          onChange={handleChange}
+          className="border p-2 rounded"
+        />
+      </div>
+
+      {/* Students */}
+      <div>
+        <h3 className="text-lg font-semibold mb-2">👩‍🎓 Select Students</h3>
+        <div className="grid md:grid-cols-3 gap-2">
+          {students.map((stu) => (
+            <label key={stu.id} className="flex items-center gap-2 border p-2 rounded">
+              <input
+                type="checkbox"
+                checked={form.student_ids.includes(stu.id)}
+                onChange={() => handleStudentToggle(stu.id)}
+              />
+              {stu.first_name} {stu.last_name}
+            </label>
+          ))}
+        </div>
+      </div>
 
       {/* Questions */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Questions</h3>
+        <h3 className="text-lg font-semibold">📝 Questions</h3>
 
         {form.questions.map((q, idx) => (
           <div key={idx} className="border p-3 rounded space-y-2 bg-gray-50">
