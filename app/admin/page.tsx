@@ -6,19 +6,28 @@ import AddUserModal from '@/components/AddUserModal';
 import AdminIssuesList from '@/components/AdminIssuesList';
 import AdminNotificationsPage from './notifications/page';
 import UserProfileModal from '@/components/UserProfileModal';
+import TodaysTopicsSection from '@/components/TodaysTopicsSection';
+
+const tabs = [
+  { key: 'teachers', label: 'Teachers' },
+  { key: 'students', label: 'Students' },
+  { key: 'notifications', label: 'Notifications' },
+  { key: 'issues', label: 'Issues' },
+   { key: 'todaytopic', label: 'Today Topic' },
+];
 
 export default function AdminDashboard() {
-  const [tab, setTab] = useState<'teachers' | 'students' | 'notifications' | 'issues'>('teachers');
+  const [tab, setTab] = useState<'teachers' | 'students' | 'notifications' | 'todaytopic' | 'issues'>('teachers');
   const [users, setUsers] = useState<any[]>([]);
   const [openModal, setOpenModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [search, setSearch] = useState('');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [totalTeachers, setTotalTeachers] = useState<number>(0);
   const [totalStudents, setTotalStudents] = useState<number>(0);
 
   const isTableTab = tab === 'teachers' || tab === 'students';
 
-  // Fetch counts (top dashboard cards)
   useEffect(() => {
     const fetchCounts = async () => {
       const { count: teacherCount } = await supabase
@@ -36,7 +45,6 @@ export default function AdminDashboard() {
     fetchCounts();
   }, []);
 
-  // Fetch users
   useEffect(() => {
     if (!isTableTab) return;
 
@@ -71,40 +79,52 @@ export default function AdminDashboard() {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-900 text-white p-4 space-y-4 hidden md:block">
-        <h2 className="text-2xl font-bold mb-6">Admin Panel</h2>
-        {['teachers', 'students', 'notifications', 'issues'].map((t) => (
+      <aside className={`bg-gray-900 text-white w-64 p-4 space-y-4 transform transition-transform duration-200 ease-in-out 
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative z-20 h-full`}>
+        <h2 className="text-xl font-bold mb-4">🛠 Admin Panel</h2>
+
+        {tabs.map((t) => (
           <button
-            key={t}
-            onClick={() => setTab(t as any)}
-            className={`block w-full text-left px-4 py-2 rounded ${
-              tab === t ? 'bg-gray-700' : 'hover:bg-gray-800'
-            } capitalize`}
+            key={t.key}
+            onClick={() => {
+              setTab(t.key as any);
+              setSidebarOpen(false);
+            }}
+            className={`block w-full text-left px-2 py-2 rounded hover:bg-gray-700 transition ${
+              tab === t.key ? 'bg-gray-700 font-semibold' : ''
+            }`}
           >
-            {t}
+            {t.label}
           </button>
         ))}
+
         <button
           onClick={() => location.replace('/login')}
-          className="block w-full text-left mt-8 px-4  text-red-400 hover:text-red-500"
+          className="block w-full mt-6 text-left px-2 py-2 bg-red-600 hover:bg-red-700 rounded transition"
         >
           Logout
         </button>
       </aside>
 
-      {/* Main Content */}
-      <main className="flex-1 p-4 md:p-6 overflow-y-auto">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <h1 className="text-2xl font-semibold capitalize">{tab}</h1>
-          {isTableTab && (
-            <button
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-              onClick={() => setOpenModal(true)}
-            >
-              Add {tab === 'teachers' ? 'Teacher' : 'Student'}
-            </button>
-          )}
+      {/* Overlay for small screens */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-10 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Main content */}
+      <main className="flex-1 p-4 md:p-6 overflow-y-auto bg-gray-50 w-full">
+        {/* Mobile Top Bar */}
+        <div className="md:hidden flex justify-between items-center mb-4">
+          <h1 className="text-lg font-bold capitalize">{tab}</h1>
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="text-gray-700 border px-3 py-1 rounded"
+          >
+            {sidebarOpen ? 'Close' : 'Menu'}
+          </button>
         </div>
 
         {/* Analytics Cards */}
@@ -119,9 +139,9 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Search */}
+        {/* Search and Add Button */}
         {isTableTab && (
-          <div className="mb-4">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
             <input
               type="text"
               placeholder="Search by name or email..."
@@ -129,6 +149,12 @@ export default function AdminDashboard() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
+            <button
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+              onClick={() => setOpenModal(true)}
+            >
+              Add {tab === 'teachers' ? 'Teacher' : 'Student'}
+            </button>
           </div>
         )}
 
@@ -172,6 +198,7 @@ export default function AdminDashboard() {
 
         {/* Issues */}
         {tab === 'issues' && <AdminIssuesList />}
+         {tab === 'todaytopic' && <TodaysTopicsSection/>}
 
         {/* Add Modal */}
         {openModal && isTableTab && (
