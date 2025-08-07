@@ -1,42 +1,41 @@
-'use client';
+"use client";
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import AddUserModal from '@/components/AddUserModal';
-import AdminIssuesList from '@/components/AdminIssuesList';
-import AdminNotificationsPage from './notifications/page';
-import UserProfileModal from '@/components/UserProfileModal';
-import TodaysTopicsSection from '@/components/TodaysTopicsSection';
+
+const AddUserModal = dynamic(() => import('@/components/AddUserModal'));
+const AdminIssuesList = dynamic(() => import('@/components/AdminIssuesList'));
+const AdminNotificationsPage = dynamic(() => import('./notifications/page'));
+const UserProfileModal = dynamic(() => import('@/components/UserProfileModal'));
+const TodaysTopicsSection = dynamic(() => import('@/components/TodaysTopicsSection'));
 
 const tabs = [
   { key: 'teachers', label: 'Teachers' },
   { key: 'students', label: 'Students' },
   { key: 'notifications', label: 'Notifications' },
   { key: 'issues', label: 'Issues' },
-   { key: 'todaytopic', label: 'Today Topic' },
+  { key: 'todaytopic', label: 'Today Topic' },
 ];
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [tab, setTab] = useState<'teachers' | 'students' | 'notifications' | 'todaytopic' | 'issues'>('teachers');
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<{ id: string; first_name: string; last_name: string; email: string; subject?: string; contact?: string }[]>([]);
   const [openModal, setOpenModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<typeof users[0] | null>(null);
   const [search, setSearch] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [totalTeachers, setTotalTeachers] = useState<number>(0);
   const [totalStudents, setTotalStudents] = useState<number>(0);
 
-  const isTableTab = tab === 'teachers' || tab === 'students';
+  const isTableTab = useMemo(() => tab === 'teachers' || tab === 'students', [tab]);
 
   useEffect(() => {
     const fetchCounts = async () => {
-      const { count: teacherCount } = await supabase
-        .from('teachers')
-        .select('*', { count: 'exact', head: true });
-
-      const { count: studentCount } = await supabase
-        .from('students')
-        .select('*', { count: 'exact', head: true });
+      const { count: teacherCount } = await supabase.from('teachers').select('*', { count: 'exact', head: true });
+      const { count: studentCount } = await supabase.from('students').select('*', { count: 'exact', head: true });
 
       setTotalTeachers(teacherCount || 0);
       setTotalStudents(studentCount || 0);
@@ -49,11 +48,7 @@ export default function AdminDashboard() {
     if (!isTableTab) return;
 
     const fetchUsers = async () => {
-      const { data } = await supabase
-        .from(tab)
-        .select('*')
-        .order('created_at', { ascending: false });
-
+      const { data } = await supabase.from(tab).select('*').order('created_at', { ascending: false });
       setUsers(data || []);
     };
 
@@ -67,7 +62,7 @@ export default function AdminDashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [tab]);
+  }, [tab, isTableTab]);
 
   const filteredUsers = useMemo(() => {
     return users.filter((u) => {
@@ -76,47 +71,42 @@ export default function AdminDashboard() {
     });
   }, [users, search]);
 
+  const handleTabChange = useCallback((key: string) => {
+    setTab(key as typeof tab);
+    setSidebarOpen(false);
+  }, []);
+
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Sidebar */}
-      <aside className={`bg-gray-900 text-white w-64 p-4 space-y-4 transform transition-transform duration-200 ease-in-out 
-        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 fixed md:relative z-20 h-full`}>
+      <aside
+        className={`bg-gray-900 text-white w-64 p-4 space-y-4 transform transition-transform duration-200 ease-in-out ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } md:translate-x-0 fixed md:relative z-20 h-full`}
+      >
         <h2 className="text-xl font-bold mb-4">🛠 Admin Panel</h2>
-
         {tabs.map((t) => (
           <button
             key={t.key}
-            onClick={() => {
-              setTab(t.key as any);
-              setSidebarOpen(false);
-            }}
-            className={`block w-full text-left px-2 py-2 rounded hover:bg-gray-700 transition ${
-              tab === t.key ? 'bg-gray-700 font-semibold' : ''
-            }`}
+            onClick={() => handleTabChange(t.key)}
+            className={`block w-full text-left px-2 py-2 rounded hover:bg-gray-700 transition ${tab === t.key ? 'bg-gray-700 font-semibold' : ''}`}
           >
             {t.label}
           </button>
         ))}
 
         <button
-          onClick={() => location.replace('/login')}
+          onClick={() => router.push('/login')}
           className="block w-full mt-6 text-left px-2 py-2 bg-red-600 hover:bg-red-700 rounded transition"
         >
           Logout
         </button>
       </aside>
 
-      {/* Overlay for small screens */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 z-10 md:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
+      {sidebarOpen && <div className="fixed inset-0 bg-black bg-opacity-50 z-10 md:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Main content */}
       <main className="flex-1 p-4 md:p-6 overflow-y-auto bg-gray-50 w-full">
-        {/* Mobile Top Bar */}
         <div className="md:hidden flex justify-between items-center mb-4">
           <h1 className="text-lg font-bold capitalize">{tab}</h1>
           <button
@@ -127,7 +117,6 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* Analytics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-white shadow rounded p-4">
             <p className="text-gray-500 text-sm">Total Teachers</p>
@@ -139,7 +128,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Search and Add Button */}
         {isTableTab && (
           <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-4">
             <input
@@ -158,7 +146,6 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Table */}
         {isTableTab && (
           <div className="overflow-x-auto">
             <table className="w-full text-sm border rounded shadow-sm">
@@ -193,29 +180,13 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Notifications */}
         {tab === 'notifications' && <AdminNotificationsPage />}
-
-        {/* Issues */}
         {tab === 'issues' && <AdminIssuesList />}
-         {tab === 'todaytopic' && <TodaysTopicsSection/>}
+        {tab === 'todaytopic' && <TodaysTopicsSection />}
 
-        {/* Add Modal */}
-        {openModal && isTableTab && (
-          <AddUserModal
-            role={tab}
-            onClose={() => setOpenModal(false)}
-          />
-        )}
+        {openModal && isTableTab && <AddUserModal role={tab} onClose={() => setOpenModal(false)} />}
 
-        {/* Profile Modal */}
-        {selectedUser && (
-          <UserProfileModal
-            user={selectedUser}
-            onClose={() => setSelectedUser(null)}
-            role={tab}
-          />
-        )}
+        {selectedUser && <UserProfileModal user={selectedUser} onClose={() => setSelectedUser(null)} role={tab} />}
       </main>
     </div>
   );
