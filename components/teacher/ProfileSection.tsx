@@ -29,7 +29,7 @@ export default function ProfileSection({ teacher }: Props) {
     const fileExt = file.name.split('.').pop();
     const fileName = `${teacher.id}.${fileExt}`;
     const { error } = await supabase.storage
-      .from('profile-images') // Make sure this bucket exists
+      .from('profile-images')
       .upload(`teachers/${fileName}`, file, { upsert: true });
 
     if (!error) {
@@ -44,8 +44,6 @@ export default function ProfileSection({ teacher }: Props) {
 
   const handleSubmit = async () => {
     setLoading(true);
-
-    // Only update changed fields (space/time efficient)
     const updates: any = {};
     Object.keys(form).forEach((key) => {
       if ((form as any)[key] !== (teacher as any)[key]) {
@@ -73,55 +71,88 @@ export default function ProfileSection({ teacher }: Props) {
   };
 
   return (
-    <div className="max-w-xl mx-auto space-y-4">
-      <h2 className="text-2xl font-bold">Edit Profile</h2>
+    <div className="w-full max-w-3xl mx-auto px-4 py-6 space-y-6">
+      <h2 className="text-3xl font-bold text-gray-800">Edit Profile</h2>
 
-      <input
-        name="first_name"
-        value={form.first_name}
-        onChange={handleChange}
-        className="w-full border p-2 rounded"
-        placeholder="First Name"
-      />
-      <input
-        name="last_name"
-        value={form.last_name}
-        onChange={handleChange}
-        className="w-full border p-2 rounded"
-        placeholder="Last Name"
-      />
-      <input
-        name="contact"
-        value={form.contact}
-        onChange={handleChange}
-        className="w-full border p-2 rounded"
-        placeholder="Contact"
-      />
-      <input
-        name="address"
-        value={form.address}
-        onChange={handleChange}
-        className="w-full border p-2 rounded"
-        placeholder="Address"
-      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium mb-1 text-gray-700">
+            First Name
+          </label>
+          <input
+            name="first_name"
+            value={form.first_name}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter First Name"
+          />
+        </div>
 
-      {/* Profile Image */}
+        <div>
+          <label className="block text-sm font-medium mb-1 text-gray-700">
+            Last Name
+          </label>
+          <input
+            name="last_name"
+            value={form.last_name}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter Last Name"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1 text-gray-700">
+            Contact
+          </label>
+          <input
+            name="contact"
+            value={form.contact}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter Contact Number"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium mb-1 text-gray-700">
+            Address
+          </label>
+          <input
+            name="address"
+            value={form.address}
+            onChange={handleChange}
+            className="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter Address"
+          />
+        </div>
+      </div>
+
+      {/* Profile Image Upload */}
       <div>
-        <p className="mb-1 font-medium">Profile Image</p>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          Profile Image
+        </label>
+
         {form.profile_image && (
           <img
             src={form.profile_image}
             alt="Profile"
-            className="w-24 h-24 rounded-full mb-2 object-cover"
+            className="w-24 h-24 rounded-full object-cover mb-3"
           />
         )}
-        <input type="file" accept="image/*" onChange={handleImageUpload} />
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="block"
+        />
       </div>
 
       <button
         onClick={handleSubmit}
         disabled={loading}
-        className="px-4 py-2 bg-blue-600 text-white rounded"
+        className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition disabled:opacity-50"
       >
         {loading ? 'Saving...' : 'Save Changes'}
       </button>

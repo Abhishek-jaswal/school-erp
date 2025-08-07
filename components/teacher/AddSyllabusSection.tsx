@@ -12,20 +12,24 @@ export default function AddSyllabusSection({ teacher }: Props) {
   const [existingId, setExistingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Fetch existing syllabus for the current teacher
   useEffect(() => {
     const fetchSyllabus = async () => {
       setLoading(true);
+
       const { data, error } = await supabase
         .from('syllabus')
         .select('*')
         .eq('teacher_id', teacher.id)
         .single();
 
+      // If data exists, set it to state
       if (data) {
         setSyllabus(data.content);
         setExistingId(data.id);
       }
 
+      // Ignore "no rows" error (PGRST116), log other errors
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching syllabus:', error.message);
       }
@@ -36,6 +40,7 @@ export default function AddSyllabusSection({ teacher }: Props) {
     fetchSyllabus();
   }, [teacher.id]);
 
+  // Handle save or update action
   const handleSave = async () => {
     if (!syllabus.trim()) {
       alert('Syllabus cannot be empty.');
@@ -45,7 +50,7 @@ export default function AddSyllabusSection({ teacher }: Props) {
     setLoading(true);
 
     if (existingId) {
-      // update
+      // Update existing syllabus
       const { error } = await supabase
         .from('syllabus')
         .update({ content: syllabus })
@@ -54,7 +59,7 @@ export default function AddSyllabusSection({ teacher }: Props) {
       if (error) alert('Update failed: ' + error.message);
       else alert('Syllabus updated successfully!');
     } else {
-      // insert
+      // Insert new syllabus
       const { error } = await supabase.from('syllabus').insert([
         {
           teacher_id: teacher.id,
@@ -71,24 +76,40 @@ export default function AddSyllabusSection({ teacher }: Props) {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
-      <h2 className="text-2xl font-bold">Add / Edit Syllabus</h2>
+    <div className="max-w-3xl mx-auto p-4 space-y-6 bg-white shadow rounded-lg">
+      {/* Title */}
+      <h2 className="text-2xl font-bold text-gray-800">
+        {existingId ? 'Edit Syllabus' : 'Add Syllabus'}
+      </h2>
 
+      {/* Subject Info */}
+      <p className="text-sm text-gray-600">
+        Subject: <span className="font-semibold">{teacher.subject}</span>
+      </p>
+
+      {/* Syllabus Text Area */}
       <textarea
         value={syllabus}
         onChange={(e) => setSyllabus(e.target.value)}
         rows={10}
-        className="w-full border p-3 rounded resize-y"
         placeholder={`Enter syllabus for ${teacher.subject}...`}
+        className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
 
-      <button
-        onClick={handleSave}
-        disabled={loading}
-        className="bg-blue-600 text-white px-4 py-2 rounded"
-      >
-        {loading ? 'Saving...' : existingId ? 'Update Syllabus' : 'Save Syllabus'}
-      </button>
+      {/* Save/Update Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={handleSave}
+          disabled={loading}
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded transition disabled:opacity-60"
+        >
+          {loading
+            ? 'Saving...'
+            : existingId
+            ? 'Update Syllabus'
+            : 'Save Syllabus'}
+        </button>
+      </div>
     </div>
   );
 }

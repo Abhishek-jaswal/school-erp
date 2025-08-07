@@ -7,7 +7,7 @@ import bcrypt from 'bcryptjs';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [role, setRole] = useState('admin'); // default to admin
+  const [role, setRole] = useState('admin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -44,39 +44,45 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen gap-4">
-      <h1 className="text-2xl font-bold">Login</h1>
-      <select
-        value={role}
-        onChange={(e) => setRole(e.target.value)}
-        className="border px-4 py-2"
-      >
-        <option value="admin">Admin</option>
-        <option value="teacher">Teacher</option>
-        <option value="student">Student</option>
-      </select>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-white to-blue-200 px-4">
+      <div className="bg-white shadow-lg rounded-2xl w-full max-w-md p-8 space-y-6">
+        <h1 className="text-3xl font-bold text-center text-blue-700">Login</h1>
 
-      <input
-        type="text"
-        placeholder="Email or Username"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="border px-4 py-2"
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="border px-4 py-2"
-      />
+        <div className="flex flex-col gap-4">
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          >
+            <option value="admin">Admin</option>
+            <option value="teacher">Teacher</option>
+            <option value="student">Student</option>
+          </select>
 
-      <button
-        onClick={handleLogin}
-        className="bg-blue-500 text-white px-4 py-2 rounded"
-      >
-        Login
-      </button>
+          <input
+            type="text"
+            placeholder="Email or Username"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          />
+
+          <button
+            onClick={handleLogin}
+            className="bg-blue-600 hover:bg-blue-700 transition text-white font-semibold py-2 rounded shadow-md"
+          >
+            Login
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

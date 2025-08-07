@@ -12,6 +12,7 @@ export default function StudentsSection({ subject }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Fetch students related to a specific subject
   useEffect(() => {
     const fetchStudents = async () => {
       setLoading(true);
@@ -32,64 +33,93 @@ export default function StudentsSection({ subject }: Props) {
     fetchStudents();
   }, [subject]);
 
+  // Toggle expandable section for student details
   const toggleExpand = (id: string) => {
     setExpandedId((prev) => (prev === id ? null : id));
   };
 
-  if (loading) return <p>Loading students...</p>;
+  // Loading state
+  if (loading) return <p className="text-gray-600 text-center py-4">Loading students...</p>;
 
+  // No students found
   if (students.length === 0)
-    return <p className="text-gray-600">No students found for {subject}.</p>;
+    return (
+      <p className="text-center text-gray-600 py-4">
+        No students found for <strong>{subject}</strong>.
+      </p>
+    );
 
   return (
-    <div className="space-y-4">
-      <h2 className="text-2xl font-bold">Students ({subject})</h2>
+    <div className="space-y-6">
+      <h2 className="text-2xl font-semibold text-gray-800 text-center">
+        Students Enrolled in <span className="text-blue-600">{subject}</span>
+      </h2>
 
-      <table className="w-full border text-sm">
-        <thead className="bg-gray-200">
-          <tr>
-            <th className="border px-3 py-2">Name</th>
-            <th className="border px-3 py-2">Email</th>
-            <th className="border px-3 py-2">Contact</th>
-            <th className="border px-3 py-2">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {students.map((stu) => (
-            <>
-              <tr key={stu.id} className="text-center">
-                <td className="border px-2 py-1">{stu.first_name} {stu.last_name}</td>
-                <td className="border px-2 py-1">{stu.email}</td>
-                <td className="border px-2 py-1">{stu.contact}</td>
-                <td className="border px-2 py-1">
+      {/* Responsive Table Wrapper */}
+      <div className="overflow-x-auto">
+        <table className="min-w-full bg-white text-sm border rounded shadow">
+          <thead className="bg-gray-100 text-gray-700 font-medium">
+            <tr>
+              <th className="px-4 py-3 border">Name</th>
+              <th className="px-4 py-3 border">Email</th>
+              <th className="px-4 py-3 border">Contact</th>
+              <th className="px-4 py-3 border">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {students.map((stu) => (
+              <tr key={stu.id} className="text-center hover:bg-gray-50 transition">
+                {/* Student Basic Info */}
+                <td className="px-4 py-2 border">
+                  {stu.first_name} {stu.last_name}
+                </td>
+                <td className="px-4 py-2 border">{stu.email}</td>
+                <td className="px-4 py-2 border">{stu.contact}</td>
+                <td className="px-4 py-2 border">
                   <button
-                    className="text-blue-600 underline"
                     onClick={() => toggleExpand(stu.id)}
+                    className="text-blue-600 underline hover:text-blue-800 transition"
                   >
                     {expandedId === stu.id ? 'Hide' : 'View'}
                   </button>
                 </td>
               </tr>
+            ))}
 
-              {/* Expandable Section */}
-              {expandedId === stu.id && (
-                <tr>
-                  <td colSpan={4} className="border px-3 py-2 bg-gray-100 text-left">
-                    <div className="space-y-1 text-sm">
-                      <p><strong>Address:</strong> {stu.address}</p>
-                      <p><strong>Aadhaar:</strong> {stu.aadhaar}</p>
-                      <p><strong>Alt Contact:</strong> {stu.alternate_contact}</p>
-                      <p><strong>Education:</strong> {stu.education}</p>
-                      <p><strong>Student ID:</strong> {stu.student_id}</p>
-                      <p><strong>Registered:</strong> {new Date(stu.created_at).toLocaleString()}</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
-            </>
-          ))}
-        </tbody>
-      </table>
+            {/* Expanded Details Row */}
+            {students.map(
+              (stu) =>
+                expandedId === stu.id && (
+                  <tr key={`expanded-${stu.id}`}>
+                    <td colSpan={4} className="bg-gray-50 px-6 py-4 text-left border">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-gray-700 text-sm">
+                        <p>
+                          <strong>Address:</strong> {stu.address}
+                        </p>
+                        <p>
+                          <strong>Aadhaar:</strong> {stu.aadhaar}
+                        </p>
+                        <p>
+                          <strong>Alt Contact:</strong> {stu.alternate_contact}
+                        </p>
+                        <p>
+                          <strong>Education:</strong> {stu.education}
+                        </p>
+                        <p>
+                          <strong>Student ID:</strong> {stu.student_id}
+                        </p>
+                        <p>
+                          <strong>Registered:</strong>{' '}
+                          {new Date(stu.created_at).toLocaleString()}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                )
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
