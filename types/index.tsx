@@ -2,7 +2,7 @@
 
 export interface Teacher {
   id: string;
-  subject?: string;
+  subject: string;
   first_name: string;
   last_name: string;
   email: string;
@@ -13,6 +13,7 @@ export interface Teacher {
   education?: string;
   profile_image?: string;
   teacher_id: string;
+  created_at: string; 
 }
 
 

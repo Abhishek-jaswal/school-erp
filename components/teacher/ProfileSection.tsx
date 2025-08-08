@@ -10,17 +10,12 @@ interface Props {
 }
 
 export default function ProfileSection({ teacher }: Props) {
-  const [form, setForm] = useState<Omit<Teacher, 'id' | 'email'>>({
+  const [form, setForm] = useState({
     first_name: teacher.first_name || '',
     last_name: teacher.last_name || '',
     contact: teacher.contact || '',
     address: teacher.address || '',
-    subject: teacher.subject || '',
-    aadhaar: teacher.aadhaar || '',
-    alternate_contact: teacher.alternate_contact || '',
-    education: teacher.education || '',
     profile_image: teacher.profile_image || '',
-    teacher_id:teacher.teacher_id || '',
   });
 
   const [loading, setLoading] = useState(false);

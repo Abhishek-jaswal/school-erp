@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import dynamic from 'next/dynamic';
+import { Teacher } from '@/types';
 
 // Dynamic imports for better performance
 const ProfileSection = dynamic(() => import('@/components/teacher/ProfileSection'));
@@ -17,7 +18,7 @@ const NotificationsList = dynamic(() => import('@/components/NotificationsList')
 
 const TeacherDashboard = () => {
   const [activeSection, setActiveSection] = useState('profile');
-  const [teacher, setTeacher] = useState<any>(null);
+  const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
 
