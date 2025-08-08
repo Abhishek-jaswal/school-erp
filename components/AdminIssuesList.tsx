@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Issue } from '@/types';
 
 export default function AdminIssuesList() {
-  const [issues, setIssues] = useState<any[]>([]);
+  const [issues, setIssues] = useState<Issue[]>([]);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   // Fetch issues on component mount
