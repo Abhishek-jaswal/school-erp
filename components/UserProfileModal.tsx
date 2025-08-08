@@ -2,9 +2,10 @@
 
 import {  useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Teacher, Student } from '@/types';
 
 interface UserProfileModalProps {
-  user: any;
+  user: Teacher | Student;
   role: 'teachers' | 'students';
   onClose: () => void;
 }
