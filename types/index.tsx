@@ -21,7 +21,7 @@ export interface Teacher {
 
 export interface Student {
   id: string;
-  subject?: string;
+  subject: string;
   first_name: string;
   last_name: string;
   email: string;
