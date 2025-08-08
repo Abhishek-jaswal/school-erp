@@ -184,10 +184,15 @@ export default function AdminDashboard() {
         {tab === 'issues' && <AdminIssuesList />}
         {tab === 'todaytopic' && <TodaysTopicsSection />}
 
-        {openModal && isTableTab && <AddUserModal role={tab} onClose={() => setOpenModal(false)} />}
+       {openModal && isTableTab && (
+  <AddUserModal role={tab as 'teachers' | 'students'} onClose={() => setOpenModal(false)} />
+)}
 
-        {selectedUser && <UserProfileModal user={selectedUser} onClose={() => setSelectedUser(null)} role={tab} />}
-      </main>
+{selectedUser && isTableTab && (
+  <UserProfileModal user={selectedUser} onClose={() => setSelectedUser(null)} role={tab as 'teachers' | 'students'} />
+)}
+
+        </main>
     </div>
   );
 }
