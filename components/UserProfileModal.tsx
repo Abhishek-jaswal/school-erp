@@ -5,10 +5,12 @@ import { supabase } from '@/lib/supabase';
 import { Teacher, Student } from '@/types';
 
 interface UserProfileModalProps {
-  user: Teacher | Student;
+  user: Partial<Teacher> | Partial<Student>;
   role: 'teachers' | 'students';
   onClose: () => void;
 }
+
+
 
 export default function UserProfileModal({ user, role, onClose }: UserProfileModalProps) {
   const [formData, setFormData] = useState(user);
