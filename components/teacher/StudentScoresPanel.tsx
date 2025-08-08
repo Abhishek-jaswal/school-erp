@@ -2,24 +2,22 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Teacher, Exam, Submission } from '@/types'; // ✅ import types
+import { Teacher, Exam, Submission } from '@/types';
 
 interface Props {
   teacher: Teacher;
 }
 
 export default function StudentScoresPanel({ teacher }: Props) {
-  const [exams, setExams] = useState<Exam[]>([]); // ✅ no any
+  const [exams, setExams] = useState<Exam[]>([]);
   const [selectedExamId, setSelectedExamId] = useState<string>('');
-  const [submissions, setSubmissions] = useState<Submission[]>([]); // ✅ no any
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch exams and their related submissions
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
 
-      // Get exams for teacher's subject
       const { data: examsData } = await supabase
         .from('exams')
         .select('id, subject, exam_date, total_marks, questions')
@@ -28,14 +26,23 @@ export default function StudentScoresPanel({ teacher }: Props) {
 
       const examIds = examsData?.map((e) => e.id) || [];
 
-      // Get all submissions for those exams
-    const { data: submissionsData } = await supabase
+      const { data: submissionsData } = await supabase
         .from('exam_submissions')
         .select('id, exam_id, student_id, answers, submitted_at, students(first_name, last_name)')
         .in('exam_id', examIds);
 
+      // Cast submissions to match our Submission type
       setExams((examsData as Exam[]) || []);
-      setSubmissions((submissionsData as Submission[]) || []);
+     setSubmissions(
+  submissionsData?.map((s) => ({
+    ...s,
+    students: {
+     first_name: s.students[0]?.first_name || '',
+      last_name: s.students[0]?.last_name || '',
+    },
+  })) || []
+);
+
       setSelectedExamId(examsData?.[0]?.id || '');
       setLoading(false);
     };
@@ -43,7 +50,6 @@ export default function StudentScoresPanel({ teacher }: Props) {
     fetchData();
   }, [teacher.subject]);
 
-  // Filter and calculate scores for selected exam
   const getFilteredResults = () => {
     const exam = exams.find((e) => e.id === selectedExamId);
     if (!exam) return [];
@@ -87,7 +93,6 @@ export default function StudentScoresPanel({ teacher }: Props) {
         <div className="text-center text-gray-600">No exams found.</div>
       ) : (
         <>
-          {/* Exam selection dropdown */}
           <div className="mb-6">
             <label className="mr-2 font-medium">Select Exam:</label>
             <select
@@ -103,7 +108,6 @@ export default function StudentScoresPanel({ teacher }: Props) {
             </select>
           </div>
 
-          {/* Score Table */}
           {filteredResults.length === 0 ? (
             <p className="text-gray-500">No submissions yet for this exam.</p>
           ) : (
@@ -120,15 +124,15 @@ export default function StudentScoresPanel({ teacher }: Props) {
                   {filteredResults.map((r, i) => (
                     <tr
                       key={i}
-                      className={`text-center ${
-                        i % 2 === 0 ? 'bg-white' : 'bg-gray-50'
-                      } hover:bg-indigo-50 transition`}
+                      className={`text-center ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-indigo-50 transition`}
                     >
                       <td className="p-3 border">{r.student}</td>
                       <td className="p-3 border font-semibold text-indigo-700">
                         {r.score} / {r.total}
                       </td>
-                      <td className="p-3 border">{r.correct} / {r.totalQ}</td>
+                      <td className="p-3 border">
+                        {r.correct} / {r.totalQ}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

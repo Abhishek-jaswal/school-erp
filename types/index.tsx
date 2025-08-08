@@ -84,8 +84,9 @@ export interface Submission {
   students: {
     first_name: string;
     last_name: string;
-  };
+  }; // ✅ NOT an array
 }
+
 
 export interface Issue {
   id: number;
