@@ -2,24 +2,32 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Teacher } from '@/types';
+import Image from 'next/image';
 
 interface Props {
-  teacher: any;
+  teacher: Teacher;
 }
 
 export default function ProfileSection({ teacher }: Props) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<Omit<Teacher, 'id' | 'email'>>({
     first_name: teacher.first_name || '',
     last_name: teacher.last_name || '',
     contact: teacher.contact || '',
     address: teacher.address || '',
+    subject: teacher.subject || '',
+    aadhaar: teacher.aadhaar || '',
+    alternate_contact: teacher.alternate_contact || '',
+    education: teacher.education || '',
     profile_image: teacher.profile_image || '',
+    teacher_id:teacher.teacher_id || '',
   });
 
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,6 +36,7 @@ export default function ProfileSection({ teacher }: Props) {
 
     const fileExt = file.name.split('.').pop();
     const fileName = `${teacher.id}.${fileExt}`;
+
     const { error } = await supabase.storage
       .from('profile-images')
       .upload(`teachers/${fileName}`, file, { upsert: true });
@@ -36,6 +45,7 @@ export default function ProfileSection({ teacher }: Props) {
       const { data } = supabase.storage
         .from('profile-images')
         .getPublicUrl(`teachers/${fileName}`);
+
       setForm((prev) => ({ ...prev, profile_image: data.publicUrl }));
     } else {
       alert('Failed to upload image');
@@ -44,10 +54,11 @@ export default function ProfileSection({ teacher }: Props) {
 
   const handleSubmit = async () => {
     setLoading(true);
-    const updates: any = {};
-    Object.keys(form).forEach((key) => {
-      if ((form as any)[key] !== (teacher as any)[key]) {
-        updates[key] = (form as any)[key];
+    const updates: Partial<Teacher> = {};
+
+    Object.entries(form).forEach(([key, value]) => {
+      if (value !== (teacher as any)[key]) {
+        updates[key as keyof Teacher] = value;
       }
     });
 
@@ -67,6 +78,7 @@ export default function ProfileSection({ teacher }: Props) {
     } else {
       alert('Profile updated!');
     }
+
     setLoading(false);
   };
 
@@ -128,17 +140,17 @@ export default function ProfileSection({ teacher }: Props) {
         </div>
       </div>
 
-      {/* Profile Image Upload */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Profile Image
         </label>
-
         {form.profile_image && (
-          <img
+          <Image
             src={form.profile_image}
             alt="Profile"
-            className="w-24 h-24 rounded-full object-cover mb-3"
+            width={96}
+            height={96}
+            className="rounded-full object-cover mb-3"
           />
         )}
         <input

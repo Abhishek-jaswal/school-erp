@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Student , Exam } from '@/types';
 
 interface Props {
-  student: any;
+  student: Student;
 }
 
 export default function ExamView({ student }: Props) {
-  const [exams, setExams] = useState<any[]>([]);
+  const [exams, setExams] = useState<Exam[]>([]);
   const [submittedExamIds, setSubmittedExamIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const today = new Date().toISOString().split('T')[0]; // Format: yyyy-mm-dd
@@ -43,7 +44,7 @@ export default function ExamView({ student }: Props) {
   }, [student.id, student.subject]);
 
   // Redirect to exam page with student/exam context saved
-  const handleStartExam = (exam: any) => {
+  const handleStartExam = (exam: Exam) => {
     localStorage.setItem('activeExam', JSON.stringify({ exam, student }));
     window.location.href = `/student/exam/${exam.id}`;
   };

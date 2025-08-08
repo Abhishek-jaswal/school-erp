@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Student } from '@/types'; // ✅ import from your types file
 
 interface Props {
   subject: string;
 }
 
 export default function StudentsSection({ subject }: Props) {
-  const [students, setStudents] = useState<any[]>([]);
+  const [students, setStudents] = useState<Student[]>([]); // ✅ type-safe
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 

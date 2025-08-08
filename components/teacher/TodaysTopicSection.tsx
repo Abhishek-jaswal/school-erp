@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Teacher } from '@/types'; // ✅ Import type from centralized file
 
 interface Props {
-  teacher: any;
+  teacher: Teacher;
 }
 
 export default function TodaysTopicSection({ teacher }: Props) {
@@ -83,7 +84,7 @@ export default function TodaysTopicSection({ teacher }: Props) {
     <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6 space-y-6">
       {/* Header */}
       <h2 className="text-2xl font-semibold text-gray-800">
-        Today's Topic – <span className="text-blue-600 font-medium">{today}</span>
+        Today&apos;s  Topic – <span className="text-blue-600 font-medium">{today}</span>
       </h2>
 
       {/* Textarea Input */}

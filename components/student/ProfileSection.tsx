@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import Image from 'next/image';
+import { Student } from '@/types';
 
 interface Props {
-  student: any;
+  student: Student;
 }
 
 export default function ProfileSection({ student }: Props) {
@@ -47,11 +49,11 @@ export default function ProfileSection({ student }: Props) {
 
   const handleSubmit = async () => {
     setLoading(true);
+ const updates: Partial<Student> = {};
 
-    const updates: any = {};
-    Object.keys(form).forEach((key) => {
-      if ((form as any)[key] !== (student as any)[key]) {
-        updates[key] = (form as any)[key];
+    Object.entries(form).forEach(([key, value]) => {
+      if (value !== (student as any)[key]) {
+        updates[key as keyof Student] = value;
       }
     });
 
@@ -128,7 +130,7 @@ export default function ProfileSection({ student }: Props) {
       <div className="mt-6">
         <label className="block text-sm font-medium mb-1">Profile Image</label>
         {form.profile_image && (
-          <img
+          <Image
             src={form.profile_image}
             alt="Profile"
             className="w-24 h-24 rounded-full object-cover mb-2 border"
