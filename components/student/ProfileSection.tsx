@@ -48,34 +48,35 @@ export default function ProfileSection({ student }: Props) {
   };
 
   const handleSubmit = async () => {
-    setLoading(true);
- const updates: Partial<Student> = {};
+  setLoading(true);
+  const updates: Partial<Student> = {};
 
-    Object.entries(form).forEach(([key, value]) => {
-      if (value !== (student as any)[key]) {
-        updates[key as keyof Student] = value;
-      }
-    });
-
-    if (Object.keys(updates).length === 0) {
-      alert('No changes made.');
-      setLoading(false);
-      return;
+  (Object.keys(form) as (keyof typeof form)[]).forEach((key) => {
+    if (form[key] !== student[key]) {
+      updates[key] = form[key];
     }
+  });
 
-    const { error } = await supabase
-      .from('students')
-      .update(updates)
-      .eq('id', student.id);
-
-    if (error) {
-      alert('Update failed: ' + error.message);
-    } else {
-      alert('Profile updated!');
-    }
-
+  if (Object.keys(updates).length === 0) {
+    alert('No changes made.');
     setLoading(false);
-  };
+    return;
+  }
+
+  const { error } = await supabase
+    .from('students')
+    .update(updates)
+    .eq('id', student.id);
+
+  if (error) {
+    alert('Update failed: ' + error.message);
+  } else {
+    alert('Profile updated!');
+  }
+
+  setLoading(false);
+};
+
 
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6 md:p-8 bg-white shadow-md rounded-lg">
