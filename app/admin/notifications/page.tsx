@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Notification } from '@/types';
 
 export default function AdminNotificationsPage() {
   const [message, setMessage] = useState('');
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Fetch notifications when the component loads

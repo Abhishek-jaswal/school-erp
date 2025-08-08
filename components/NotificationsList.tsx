@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Notification } from '@/types';
 
 export default function NotificationsList() {
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   useEffect(() => {
     // Initial fetch of all notifications
@@ -18,7 +19,8 @@ export default function NotificationsList() {
         { event: 'INSERT', schema: 'public', table: 'notifications' },
         (payload) => {
           // Prepend new notification to the list
-          setNotifications((prev) => [payload.new, ...prev]);
+         const newNote = payload.new as Notification;
+          setNotifications((prev) => [newNote, ...prev]);
         }
       )
       .subscribe();

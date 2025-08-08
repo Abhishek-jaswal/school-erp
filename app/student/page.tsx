@@ -10,6 +10,7 @@ import SyllabusView from '@/components/student/SyllabusView';
 import ExamView from '@/components/student/ExamView';
 import IssueForm from '@/components/IssueForm';
 import NotificationsList from '@/components/NotificationsList';
+import { Student } from '@/types';
 
 const sections = [
   { key: 'profile', label: 'Profile' },
@@ -21,7 +22,7 @@ const sections = [
 
 export default function StudentDashboard() {
   const [section, setSection] = useState('profile');
-  const [student, setStudent] = useState<any>(null);
+  const [student, setStudent] = useState<Student | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
 

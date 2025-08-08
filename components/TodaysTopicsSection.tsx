@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { TopicWithTeacher } from '@/types';
 
 export default function TodaysTopicsSection() {
-  const [topics, setTopics] = useState<any[]>([]);
+  const [topics, setTopics] = useState<TopicWithTeacher[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchTopics = async () => {
+   const fetchTopics = async () => {
       const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('topics')
@@ -21,9 +22,11 @@ export default function TodaysTopicsSection() {
         `)
         .eq('date', today);
 
-      if (error) console.error('Error loading topics:', error.message);
-      else setTopics(data || []);
-
+      if (error) {
+        console.error('Error loading topics:', error.message);
+      } else {
+        setTopics(data as TopicWithTeacher[]); // ✅ Explicit cast
+      }
       setLoading(false);
     };
 

@@ -2,9 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Teacher } from '@/types';
 
 interface Props {
-  teacher: any;
+  teacher: Teacher;
 }
 
 export default function AddSyllabusSection({ teacher }: Props) {

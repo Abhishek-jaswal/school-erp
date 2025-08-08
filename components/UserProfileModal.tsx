@@ -2,12 +2,15 @@
 
 import {  useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Teacher, Student } from '@/types';
 
 interface UserProfileModalProps {
-  user: any;
+  user: Partial<Teacher> | Partial<Student>;
   role: 'teachers' | 'students';
   onClose: () => void;
 }
+
+
 
 export default function UserProfileModal({ user, role, onClose }: UserProfileModalProps) {
   const [formData, setFormData] = useState(user);

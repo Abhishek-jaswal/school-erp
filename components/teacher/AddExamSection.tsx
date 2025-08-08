@@ -3,8 +3,10 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
+import type { Teacher, Student } from '@/types';
+
 interface Props {
-  teacher: any;
+  teacher: Teacher;
 }
 
 export default function AddExamSection({ teacher }: Props) {
@@ -19,20 +21,23 @@ export default function AddExamSection({ teacher }: Props) {
     ],
   });
 
-  const [students, setStudents] = useState<any[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(false);
 
   // 📥 Fetch students for the same subject as the teacher
   useEffect(() => {
-    const fetchStudents = async () => {
-      const { data } = await supabase
+     const fetchStudents = async () => {
+      const { data, error } = await supabase
         .from('students')
         .select('id, first_name, last_name, subject')
         .eq('subject', teacher.subject);
 
-      setStudents(data || []);
+      if (error) {
+        console.error('Error fetching students:', error.message);
+      } else {
+        setStudents(data as Student[]);
+      }
     };
-
     fetchStudents();
   }, [teacher.subject]);
 
@@ -42,7 +47,7 @@ export default function AddExamSection({ teacher }: Props) {
   };
 
   // 🔄 Update question fields
-  const handleQuestionChange = (idx: number, field: string, value: any) => {
+  const handleQuestionChange = (idx: number, field: string, value: string) => {
     const updated = [...form.questions];
     if (field === 'question' || field === 'answer') {
       updated[idx][field] = value;

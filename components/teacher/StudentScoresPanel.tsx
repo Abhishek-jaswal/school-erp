@@ -2,15 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Teacher, Exam, Submission } from '@/types'; // ✅ import types
 
 interface Props {
-  teacher: any;
+  teacher: Teacher;
 }
 
 export default function StudentScoresPanel({ teacher }: Props) {
-  const [exams, setExams] = useState<any[]>([]);
+  const [exams, setExams] = useState<Exam[]>([]); // ✅ no any
   const [selectedExamId, setSelectedExamId] = useState<string>('');
-  const [submissions, setSubmissions] = useState<any[]>([]);
+  const [submissions, setSubmissions] = useState<Submission[]>([]); // ✅ no any
   const [loading, setLoading] = useState(true);
 
   // Fetch exams and their related submissions
@@ -28,13 +29,13 @@ export default function StudentScoresPanel({ teacher }: Props) {
       const examIds = examsData?.map((e) => e.id) || [];
 
       // Get all submissions for those exams
-      const { data: submissionsData } = await supabase
+    const { data: submissionsData } = await supabase
         .from('exam_submissions')
         .select('id, exam_id, student_id, answers, submitted_at, students(first_name, last_name)')
         .in('exam_id', examIds);
 
-      setExams(examsData || []);
-      setSubmissions(submissionsData || []);
+      setExams((examsData as Exam[]) || []);
+      setSubmissions((submissionsData as Submission[]) || []);
       setSelectedExamId(examsData?.[0]?.id || '');
       setLoading(false);
     };
@@ -52,7 +53,7 @@ export default function StudentScoresPanel({ teacher }: Props) {
       .map((s) => {
         let correct = 0;
 
-        exam.questions.forEach((q: any, i: number) => {
+        exam.questions.forEach((q, i) => {
           if (q.answer.trim().toLowerCase() === s.answers[i]?.trim().toLowerCase()) {
             correct++;
           }
