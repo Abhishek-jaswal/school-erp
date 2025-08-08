@@ -8,6 +8,10 @@ interface Props {
   role: 'teachers' | 'students';
   onClose: () => void;
 }
+type TeacherOrStudent = {
+  teacher_id?: string;
+  student_id?: string;
+};
 
 export default function AddUserModal({ role, onClose }: Props) {
   const [form, setForm] = useState({
@@ -60,8 +64,9 @@ export default function AddUserModal({ role, onClose }: Props) {
     if (!existing || existing.length === 0) {
       newId = role === 'teachers' ? `${prefix}001` : `${prefix}0011`;
     } else {
-      const lastId = existing[0][idField];
-      const num = parseInt(lastId.replace(/\D/g, ''), 10);
+const lastId = (existing[0] as TeacherOrStudent)[idField as keyof TeacherOrStudent]!;
+const num = parseInt(lastId.replace(/\D/g, ''), 10);
+
       const nextNum = (num + 1).toString().padStart(3, '0');
       newId = role === 'teachers' ? `${prefix}${nextNum}` : `${prefix}${nextNum}1`;
     }

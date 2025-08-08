@@ -11,7 +11,7 @@ export default function TodaysTopicsSection() {
   useEffect(() => {
    const fetchTopics = async () => {
       const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('topics')
         .select(`
           id,
@@ -22,11 +22,14 @@ export default function TodaysTopicsSection() {
         `)
         .eq('date', today);
 
-      if (error) {
-        console.error('Error loading topics:', error.message);
-      } else {
-        setTopics(data as TopicWithTeacher[]); // ✅ Explicit cast
-      }
+     if (data) {
+  const normalized = data.map((topic) => ({
+    ...topic,
+    teacher: Array.isArray(topic.teacher) ? topic.teacher[0] : topic.teacher,
+  }));
+
+  setTopics(normalized as TopicWithTeacher[]);
+}
       setLoading(false);
     };
 
