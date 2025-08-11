@@ -2,7 +2,18 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Teacher, Exam, Submission } from '@/types';
+import { Teacher, Exam, Submission } from '@/types'; // keep your base types
+
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
 
 interface TeacherPerformance {
   teacherId: string;
@@ -14,8 +25,12 @@ interface TeacherPerformance {
   totalExams: number;
 }
 
+// Narrowed row types for queries to avoid deep type recursion
+type TeacherRow = Pick<Teacher, 'teacher_id' | 'first_name' | 'last_name' | 'subject'>;
+type ExamRow = Pick<Exam, 'id' | 'subject' | 'exam_date' | 'total_marks' | 'questions'>;
+type SubmissionRow = Pick<Submission, 'id' | 'exam_id' | 'student_id' | 'answers'>;
+
 export default function TeacherPerformanceSummary() {
-  const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [performanceData, setPerformanceData] = useState<TeacherPerformance[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,99 +40,103 @@ export default function TeacherPerformanceSummary() {
 
       // Fetch all teachers
       const { data: teachersData, error: teachersError } = await supabase
-        .from<Teacher>('teachers')
-        .select('teacher_id, first_name, last_name, subject');
+        .from('teachers')
+        .select('teacher_id, first_name, last_name, subject')
+        .returns<TeacherRow[]>();
 
       if (teachersError || !teachersData) {
-        setLoading(false);
         console.error('Error fetching teachers:', teachersError);
+        setLoading(false);
         return;
       }
-      setTeachers(teachersData);
 
-      const results: TeacherPerformance[] = [];
+      // Parallelize performance calculation for each teacher
+      const results = await Promise.all(
+        teachersData.map(async (teacher) => {
+          // Fetch exams for this teacher's subject
+          const { data: examsData } = await supabase
+            .from('exams')
+            .select('id, subject, exam_date, total_marks, questions')
+            .eq('subject', teacher.subject)
+            .returns<ExamRow[]>();
 
-      for (const teacher of teachersData) {
-        // Fetch exams by subject taught by teacher
-        const { data: examsData } = await supabase
-          .from<Exam>('exams')
-          .select('id, subject, exam_date, total_marks, questions')
-          .eq('subject', teacher.subject);
-
-        if (!examsData || examsData.length === 0) {
-          results.push({
-            teacherId: teacher.teacher_id,
-            teacherName: `${teacher.first_name} ${teacher.last_name}`,
-            subject: teacher.subject,
-            avgScore: 0,
-            passPercentage: 0,
-            totalStudents: 0,
-            totalExams: 0,
-          });
-          continue;
-        }
-
-        const examIds = examsData.map((e) => e.id);
-
-        // Fetch submissions for those exams
-        const { data: submissionsData } = await supabase
-          .from<Submission>('exam_submissions')
-          .select('id, exam_id, student_id, answers')
-          .in('exam_id', examIds);
-
-        if (!submissionsData || submissionsData.length === 0) {
-          results.push({
-            teacherId: teacher.teacher_id,
-            teacherName: `${teacher.first_name} ${teacher.last_name}`,
-            subject: teacher.subject,
-            avgScore: 0,
-            passPercentage: 0,
-            totalStudents: 0,
-            totalExams: examsData.length,
-          });
-          continue;
-        }
-
-        let totalScoreSum = 0;
-        let passCount = 0;
-        const passingMarksRatio = 0.4; // 40% pass mark
-        const uniqueStudents = new Set<string>();
-
-        for (const submission of submissionsData) {
-          const exam = examsData.find((e) => e.id === submission.exam_id);
-          if (!exam) continue;
-
-          // Calculate correct answers
-          let correctCount = 0;
-          exam.questions.forEach((q, i) => {
-            if (q.answer.trim().toLowerCase() === submission.answers[i]?.trim().toLowerCase()) {
-              correctCount++;
-            }
-          });
-
-          const perQMark = exam.total_marks / exam.questions.length;
-          const score = correctCount * perQMark;
-          totalScoreSum += score;
-          uniqueStudents.add(submission.student_id);
-
-          if (score >= exam.total_marks * passingMarksRatio) {
-            passCount++;
+          if (!examsData || examsData.length === 0) {
+            return {
+              teacherId: teacher.teacher_id,
+              teacherName: `${teacher.first_name} ${teacher.last_name}`,
+              subject: teacher.subject,
+              avgScore: 0,
+              passPercentage: 0,
+              totalStudents: 0,
+              totalExams: 0,
+            };
           }
-        }
 
-        const avgScore = totalScoreSum / submissionsData.length;
-        const passPercentage = (passCount / submissionsData.length) * 100;
+          const examIds = examsData.map((e) => e.id);
 
-        results.push({
-          teacherId: teacher.teacher_id,
-          teacherName: `${teacher.first_name} ${teacher.last_name}`,
-          subject: teacher.subject,
-          avgScore: Math.round(avgScore * 100) / 100,
-          passPercentage: Math.round(passPercentage * 100) / 100,
-          totalStudents: uniqueStudents.size,
-          totalExams: examsData.length,
-        });
-      }
+          // Fetch submissions
+          const { data: submissionsData } = await supabase
+            .from('exam_submissions')
+            .select('id, exam_id, student_id, answers')
+            .in('exam_id', examIds)
+            .returns<SubmissionRow[]>();
+
+          if (!submissionsData || submissionsData.length === 0) {
+            return {
+              teacherId: teacher.teacher_id,
+              teacherName: `${teacher.first_name} ${teacher.last_name}`,
+              subject: teacher.subject,
+              avgScore: 0,
+              passPercentage: 0,
+              totalStudents: 0,
+              totalExams: examsData.length,
+            };
+          }
+
+          let totalScoreSum = 0;
+          let passCount = 0;
+          const passingMarksRatio = 0.4;
+          const uniqueStudents = new Set<string>();
+
+          for (const submission of submissionsData) {
+            const exam = examsData.find((e) => e.id === submission.exam_id);
+            if (!exam) continue;
+
+            let correctCount = 0;
+            exam.questions.forEach((q, i) => {
+              if (
+                q.answer.trim().toLowerCase() ===
+                submission.answers[i]?.trim().toLowerCase()
+              ) {
+                correctCount++;
+              }
+            });
+
+            const perQMark = exam.total_marks / exam.questions.length;
+            const score = correctCount * perQMark;
+            totalScoreSum += score;
+
+            uniqueStudents.add(submission.student_id);
+
+            if (score >= exam.total_marks * passingMarksRatio) {
+              passCount++;
+            }
+          }
+
+          const avgScore = totalScoreSum / submissionsData.length;
+          const passPercentage = (passCount / submissionsData.length) * 100;
+
+          return {
+            teacherId: teacher.teacher_id,
+            teacherName: `${teacher.first_name} ${teacher.last_name}`,
+            subject: teacher.subject,
+            avgScore: Math.round(avgScore * 100) / 100,
+            passPercentage: Math.round(passPercentage * 100) / 100,
+            totalStudents: uniqueStudents.size,
+            totalExams: examsData.length,
+          };
+        })
+      );
 
       setPerformanceData(results);
       setLoading(false);
@@ -135,35 +154,40 @@ export default function TeacherPerformanceSummary() {
       ) : performanceData.length === 0 ? (
         <p className="text-gray-500">No teacher data found.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full table-auto border border-gray-300 text-left text-sm sm:text-base">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="p-3 border">Teacher</th>
-                <th className="p-3 border">Subject</th>
-                <th className="p-3 border">Avg. Score</th>
-                <th className="p-3 border">Pass %</th>
-                <th className="p-3 border">Total Students</th>
-                <th className="p-3 border">Total Exams</th>
-              </tr>
-            </thead>
-            <tbody>
-              {performanceData.map((tp) => (
-                <tr
-                  key={tp.teacherId}
-                  className="border-t border-gray-300 hover:bg-indigo-50 transition"
-                >
-                  <td className="p-3 border">{tp.teacherName}</td>
-                  <td className="p-3 border">{tp.subject}</td>
-                  <td className="p-3 border font-semibold">{tp.avgScore}</td>
-                  <td className="p-3 border">{tp.passPercentage.toFixed(2)}%</td>
-                  <td className="p-3 border">{tp.totalStudents}</td>
-                  <td className="p-3 border">{tp.totalExams}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ResponsiveContainer width="100%" height={400}>
+          <BarChart
+            data={performanceData}
+            margin={{ top: 20, right: 40, left: 20, bottom: 80 }}
+            barCategoryGap="20%"
+          >
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis
+              dataKey="teacherName"
+              tick={{ fontSize: 12 }}
+              interval={0}
+              angle={-45}
+              textAnchor="end"
+              height={70}
+            />
+            <YAxis yAxisId="left" domain={[0, 100]} />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              domain={[0, 100]}
+              tickFormatter={(v) => `${v}%`}
+              tickCount={6}
+            />
+            <Tooltip />
+            <Legend verticalAlign="top" height={36} />
+            <Bar yAxisId="left" dataKey="avgScore" fill="#4f46e5" name="Avg Score" />
+            <Bar
+              yAxisId="right"
+              dataKey="passPercentage"
+              fill="#10b981"
+              name="Pass Percentage (%)"
+            />
+          </BarChart>
+        </ResponsiveContainer>
       )}
     </div>
   );
