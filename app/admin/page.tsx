@@ -10,6 +10,9 @@ const AdminIssuesList = dynamic(() => import('@/components/AdminIssuesList'));
 const AdminNotificationsPage = dynamic(() => import('./notifications/page'));
 const UserProfileModal = dynamic(() => import('@/components/UserProfileModal'));
 const TodaysTopicsSection = dynamic(() => import('@/components/TodaysTopicsSection'));
+const TeacherPerformanceSummary = dynamic(() => import('@/components/TeacherPerformanceSummary'));
+
+
 
 const tabs = [
   { key: 'teachers', label: 'Teachers' },
@@ -17,11 +20,12 @@ const tabs = [
   { key: 'notifications', label: 'Notifications' },
   { key: 'issues', label: 'Issues' },
   { key: 'todaytopic', label: 'Today Topic' },
+  { key: 'TeacherPerformanceSummary', label: 'Teacher Performance' },
 ];
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [tab, setTab] = useState<'teachers' | 'students' | 'notifications' | 'todaytopic' | 'issues'>('teachers');
+  const [tab, setTab] = useState<'teachers' | 'students' | 'notifications' | 'todaytopic' | 'TeacherPerformanceSummary'|'issues'>('teachers');
   const [users, setUsers] = useState<{ id: string; first_name: string; last_name: string; email: string; subject?: string; contact?: string }[]>([]);
   const [openModal, setOpenModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<typeof users[0] | null>(null);
@@ -183,6 +187,7 @@ export default function AdminDashboard() {
         {tab === 'notifications' && <AdminNotificationsPage />}
         {tab === 'issues' && <AdminIssuesList />}
         {tab === 'todaytopic' && <TodaysTopicsSection />}
+        {tab === 'TeacherPerformanceSummary' && <TeacherPerformanceSummary />}
 
        {openModal && isTableTab && (
   <AddUserModal role={tab as 'teachers' | 'students'} onClose={() => setOpenModal(false)} />
