@@ -1,0 +1,33 @@
+name: Continuous Integration Pipeline
+
+on:
+  push:
+    branches:
+      -main
+    pull_request:
+      branches:
+       -main
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.11.1'
+          cache: 'npm'
+
+      - name: Verify Node.js version
+        run: node -v
+
+      - name: Install project dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Build the project
+        run: npm run build
