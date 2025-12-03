@@ -1,7 +1,7 @@
 'use client';
 
-import {  useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { useState } from 'react';
+import { pb } from '@/lib/pb';
 import { Teacher, Student } from '@/types';
 
 interface UserProfileModalProps {
@@ -10,9 +10,11 @@ interface UserProfileModalProps {
   onClose: () => void;
 }
 
-
-
-export default function UserProfileModal({ user, role, onClose }: UserProfileModalProps) {
+export default function UserProfileModal({
+  user,
+  role,
+  onClose,
+}: UserProfileModalProps) {
   const [formData, setFormData] = useState(user);
   const [saving, setSaving] = useState(false);
 
@@ -22,53 +24,66 @@ export default function UserProfileModal({ user, role, onClose }: UserProfileMod
 
   const handleSave = async () => {
     setSaving(true);
-    const { error } = await supabase.from(role).update(formData).eq('id', user.id);
+
+    try {
+      // 🔥 PocketBase Update
+      await pb.collection(role).update(user.id as string, formData);
+      onClose();
+    } catch (err) {
+      console.error("PocketBase Update Error:", err);
+    }
+
     setSaving(false);
-    if (!error) onClose();
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-        <h2 className="text-xl font-semibold mb-4">Edit {role.slice(0, -1)} Profile</h2>
+        <h2 className="text-xl font-semibold mb-4">
+          Edit {role.slice(0, -1)} Profile
+        </h2>
 
         <div className="space-y-3">
           <input
             type="text"
             name="first_name"
-            value={formData.first_name}
+            value={formData.first_name || ''}
             onChange={handleChange}
             placeholder="First Name"
             className="w-full border rounded px-3 py-2"
           />
+
           <input
             type="text"
             name="last_name"
-            value={formData.last_name}
+            value={formData.last_name || ''}
             onChange={handleChange}
             placeholder="Last Name"
             className="w-full border rounded px-3 py-2"
           />
+
           <input
             type="email"
             name="email"
-            value={formData.email}
+            value={formData.email || ''}
             onChange={handleChange}
             placeholder="Email"
             className="w-full border rounded px-3 py-2"
           />
+
           <input
             type="text"
             name="subject"
-            value={formData.subject}
+            value={formData.subject || ''}
             onChange={handleChange}
             placeholder="Subject"
             className="w-full border rounded px-3 py-2"
           />
+
           <input
             type="text"
             name="contact"
-            value={formData.contact}
+            value={formData.contact || ''}
             onChange={handleChange}
             placeholder="Contact"
             className="w-full border rounded px-3 py-2"
@@ -82,6 +97,7 @@ export default function UserProfileModal({ user, role, onClose }: UserProfileMod
           >
             Cancel
           </button>
+
           <button
             onClick={handleSave}
             disabled={saving}

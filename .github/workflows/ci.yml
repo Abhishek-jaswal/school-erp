@@ -1,0 +1,35 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main ## trigger to pushes to main branch
+  pull_request:
+    branches:
+      - main  ## trigger on pull requests to main branch
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  ##use the latestet ubantu version
+
+    steps:
+      - name: Checkout code ##checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20  ##setup node version 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.11.1'  ##specify node version
+          cache: 'npm'
+
+      - name: Verify Node version  ##verify the node version
+        run: node -v 
+
+      - name: Install dependencies  ##install project dependencies
+        run: npm ci
+
+      - name: Run lint  ##run linting
+        run: npm run lint
+
+      - name: Run build  ##now build the project
+        run: npm run build

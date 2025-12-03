@@ -1,87 +1,89 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import bcrypt from 'bcryptjs';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { pb } from "@/lib/pb";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [role, setRole] = useState('admin');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [role, setRole] = useState("admin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
-    if (role === 'admin') {
-      if (email === 'admin' && password === 'admin123') {
-        localStorage.setItem('role', 'admin');
-        router.push('/admin');
-      } else {
-        alert('Invalid admin credentials');
+    try {
+      // ---- FIXED ADMIN LOGIN ----
+      if (role === "admin") {
+        if (email === "admin" && password === "admin123") {
+          localStorage.setItem("role", "admin");
+          router.push("/admin");
+          return;
+        } else {
+          alert("Invalid admin credentials");
+          return;
+        }
       }
-    } else {
-      const { data, error } = await supabase
-        .from(role === 'teacher' ? 'teachers' : 'students')
-        .select('*')
-        .eq('email', email)
-        .single();
 
-      if (error || !data) {
-        alert('User not found');
+      // ---- TEACHER LOGIN ----
+      if (role === "teacher") {
+        const auth = await pb.collection("teachers").authWithPassword(email, password);
+
+        localStorage.setItem("role", "teacher");
+        localStorage.setItem("userId", auth.record.id);
+        router.push("/teacher");
         return;
       }
 
-      const match = await bcrypt.compare(password, data.password);
-      if (!match) {
-        alert('Invalid password');
+      // ---- STUDENT LOGIN ----
+      if (role === "student") {
+        const auth = await pb.collection("students").authWithPassword(email, password);
+
+        localStorage.setItem("role", "student");
+        localStorage.setItem("userId", auth.record.id);
+        router.push("/student");
         return;
       }
-
-      localStorage.setItem('role', role);
-      localStorage.setItem('userId', data.id);
-      router.push(`/${role}`);
+    } catch (err) {
+      alert("Invalid credentials");
+      console.error(err);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-white to-blue-200 px-4">
-      <div className="bg-white shadow-lg rounded-2xl w-full max-w-md p-8 space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+      <div className="bg-white shadow-lg rounded-xl p-8 w-full max-w-md space-y-6">
         <h1 className="text-3xl font-bold text-center text-blue-700">Login</h1>
 
-        <div className="flex flex-col gap-4">
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          >
-            <option value="admin">Admin</option>
-            <option value="teacher">Teacher</option>
-            <option value="student">Student</option>
-          </select>
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          className="border rounded px-4 py-2 w-full"
+        >
+          <option value="admin">Admin</option>
+          <option value="teacher">Teacher</option>
+          <option value="student">Student</option>
+        </select>
 
-          <input
-            type="text"
-            placeholder="Email or Username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
+        <input
+          type="text"
+          placeholder="Email"
+          onChange={(e) => setEmail(e.target.value)}
+          className="border rounded px-4 py-2 w-full"
+        />
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          />
+        <input
+          type="password"
+          placeholder="Password"
+          onChange={(e) => setPassword(e.target.value)}
+          className="border rounded px-4 py-2 w-full"
+        />
 
-          <button
-            onClick={handleLogin}
-            className="bg-blue-600 hover:bg-blue-700 transition text-white font-semibold py-2 rounded shadow-md"
-          >
-            Login
-          </button>
-        </div>
+        <button
+          onClick={handleLogin}
+          className="bg-blue-600 hover:bg-blue-700 w-full text-white py-2 rounded"
+        >
+          Login
+        </button>
       </div>
     </div>
   );

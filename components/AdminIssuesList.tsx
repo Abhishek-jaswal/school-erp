@@ -1,67 +1,79 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Issue } from '@/types';
+import { useEffect, useState } from "react";
+import { pb } from "@/lib/pb";
+
+interface Issue {
+  id: string;
+  role: string;
+  user_id: string;
+  type: string;
+  message: string;
+  status: string;
+  created_at: string;
+  name?: string;
+}
 
 export default function AdminIssuesList() {
   const [issues, setIssues] = useState<Issue[]>([]);
-  const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  // Fetch issues on component mount
   useEffect(() => {
     fetchIssues();
   }, []);
 
-  // Fetch all issues and enrich with teacher/student names
+  // ✅ Fetch issues + attach student/teacher names
   const fetchIssues = async () => {
-    const { data: rawIssues } = await supabase
-      .from('issues')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      const rawIssues = await pb.collection("issues").getFullList({
+        sort: "-created_at",
+      });
 
-    const teachersMap = new Map();
-    const studentsMap = new Map();
+      // --- Fetch teachers & students ---
+      const teachers = await pb.collection("teachers").getFullList({
+        fields: "id,firstname,lastname",
+      });
 
-    // Get teacher names
-    const { data: teachers } = await supabase
-      .from('teachers')
-      .select('id, first_name, last_name');
-    teachers?.forEach((t) => {
-      teachersMap.set(t.id, `${t.first_name} ${t.last_name}`);
-    });
+      const students = await pb.collection("students").getFullList({
+        fields: "id,firstname,lastname",
+      });
 
-    // Get student names
-    const { data: students } = await supabase
-      .from('students')
-      .select('id, first_name, last_name');
-    students?.forEach((s) => {
-      studentsMap.set(s.id, `${s.first_name} ${s.last_name}`);
-    });
+      const teacherMap = new Map(
+        teachers.map((t) => [t.id, `${t.firstname} ${t.lastname}`])
+      );
 
-    // Attach names based on role
-    const enriched = rawIssues?.map((i) => ({
-      ...i,
-      name: i.role === 'teacher'
-        ? teachersMap.get(i.user_id)
-        : studentsMap.get(i.user_id),
-    }));
+      const studentMap = new Map(
+        students.map((s) => [s.id, `${s.firstname} ${s.lastname}`])
+      );
 
-    setIssues(enriched || []);
+      // --- Attach correct name depending on role ---
+      const enriched = rawIssues.map((i: any) => ({
+        ...i,
+        name:
+          i.role === "teacher"
+            ? teacherMap.get(i.user_id)
+            : studentMap.get(i.user_id),
+      }));
+
+      setIssues(enriched);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to load issues");
+    }
   };
 
-  // Update issue status to "resolved"
-  const handleResolve = async (id: number) => {
+  // ✅ Update issue status
+  const handleResolve = async (id: string) => {
     setUpdatingId(id);
-    const { error } = await supabase
-      .from('issues')
-      .update({ status: 'resolved' })
-      .eq('id', id);
+    try {
+      await pb.collection("issues").update(id, {
+        status: "resolved",
+      });
 
-    if (error) {
-      alert('Failed to update issue');
-    } else {
-      fetchIssues(); // Refresh list
+      fetchIssues();
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update issue");
     }
     setUpdatingId(null);
   };
@@ -70,12 +82,11 @@ export default function AdminIssuesList() {
     <div className="mt-8 p-4 sm:p-6 max-w-6xl mx-auto bg-white shadow rounded-md">
       <h2 className="text-2xl font-bold mb-4">⚠️ Raised Issues</h2>
 
-      {/* Responsive table wrapper */}
       <div className="overflow-x-auto">
         {issues.length === 0 ? (
           <p className="text-gray-500">No issues found.</p>
         ) : (
-          <table className="min-w-[800px] w-full text-sm border">
+          <table className="min-w-[900px] w-full text-sm border">
             <thead className="bg-gray-100 text-left">
               <tr>
                 <th className="border px-3 py-2">#</th>
@@ -88,31 +99,43 @@ export default function AdminIssuesList() {
                 <th className="border px-3 py-2">Action</th>
               </tr>
             </thead>
+
             <tbody>
               {issues.map((issue, idx) => (
                 <tr key={issue.id} className="hover:bg-gray-50">
                   <td className="border px-3 py-2">{idx + 1}</td>
-                  <td className="border px-3 py-2">{issue.name || 'Unknown'}</td>
+                  <td className="border px-3 py-2">{issue.name || "Unknown"}</td>
                   <td className="border px-3 py-2 capitalize">{issue.role}</td>
                   <td className="border px-3 py-2">{issue.type}</td>
-                  <td className="border px-3 py-2 max-w-[200px] truncate" title={issue.message}>
+
+                  <td
+                    className="border px-3 py-2 max-w-[200px] truncate"
+                    title={issue.message}
+                  >
                     {issue.message}
                   </td>
-                  <td className="border px-3 py-2 capitalize">{issue.status}</td>
+
+                  <td className="border px-3 py-2 capitalize">
+                    {issue.status}
+                  </td>
+
                   <td className="border px-3 py-2 whitespace-nowrap">
                     {new Date(issue.created_at).toLocaleString()}
                   </td>
+
                   <td className="border px-3 py-2">
-                    {issue.status !== 'resolved' ? (
+                    {issue.status !== "resolved" ? (
                       <button
                         onClick={() => handleResolve(issue.id)}
                         disabled={updatingId === issue.id}
-                        className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-xs"
+                        className="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700"
                       >
-                        {updatingId === issue.id ? 'Updating...' : 'Mark Resolved'}
+                        {updatingId === issue.id ? "Updating..." : "Mark Resolved"}
                       </button>
                     ) : (
-                      <span className="text-green-600 font-semibold text-xs">Resolved</span>
+                      <span className="text-green-600 font-semibold text-xs">
+                        Resolved
+                      </span>
                     )}
                   </td>
                 </tr>

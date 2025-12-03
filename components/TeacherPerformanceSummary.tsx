@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Teacher, Exam, Submission } from '@/types'; // keep your base types
+import { pb } from '@/lib/pb';
 
 import {
   BarChart,
@@ -25,124 +24,127 @@ interface TeacherPerformance {
   totalExams: number;
 }
 
-// Narrowed row types for queries to avoid deep type recursion
-type TeacherRow = Pick<Teacher, 'teacher_id' | 'first_name' | 'last_name' | 'subject'>;
-type ExamRow = Pick<Exam, 'id' | 'subject' | 'exam_date' | 'total_marks' | 'questions'>;
-type SubmissionRow = Pick<Submission, 'id' | 'exam_id' | 'student_id' | 'answers'>;
-
 export default function TeacherPerformanceSummary() {
   const [performanceData, setPerformanceData] = useState<TeacherPerformance[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchTeachersAndPerformance = async () => {
+    const fetchPerformance = async () => {
       setLoading(true);
 
-      // Fetch all teachers
-      const { data: teachersData, error: teachersError } = await supabase
-        .from('teachers')
-        .select('teacher_id, first_name, last_name, subject')
-        .returns<TeacherRow[]>();
+      try {
+        /** ============================
+         *  1. Fetch Teachers (PocketBase)
+         * ============================ */
+        const teachers = await pb.collection('teachers').getFullList({
+          fields: 'teacher_id, first_name, last_name, subject',
+        });
 
-      if (teachersError || !teachersData) {
-        console.error('Error fetching teachers:', teachersError);
-        setLoading(false);
-        return;
-      }
+        if (!teachers.length) {
+          setPerformanceData([]);
+          setLoading(false);
+          return;
+        }
 
-      // Parallelize performance calculation for each teacher
-      const results = await Promise.all(
-        teachersData.map(async (teacher) => {
-          // Fetch exams for this teacher's subject
-          const { data: examsData } = await supabase
-            .from('exams')
-            .select('id, subject, exam_date, total_marks, questions')
-            .eq('subject', teacher.subject)
-            .returns<ExamRow[]>();
-
-          if (!examsData || examsData.length === 0) {
-            return {
-              teacherId: teacher.teacher_id,
-              teacherName: `${teacher.first_name} ${teacher.last_name}`,
-              subject: teacher.subject,
-              avgScore: 0,
-              passPercentage: 0,
-              totalStudents: 0,
-              totalExams: 0,
-            };
-          }
-
-          const examIds = examsData.map((e) => e.id);
-
-          // Fetch submissions
-          const { data: submissionsData } = await supabase
-            .from('exam_submissions')
-            .select('id, exam_id, student_id, answers')
-            .in('exam_id', examIds)
-            .returns<SubmissionRow[]>();
-
-          if (!submissionsData || submissionsData.length === 0) {
-            return {
-              teacherId: teacher.teacher_id,
-              teacherName: `${teacher.first_name} ${teacher.last_name}`,
-              subject: teacher.subject,
-              avgScore: 0,
-              passPercentage: 0,
-              totalStudents: 0,
-              totalExams: examsData.length,
-            };
-          }
-
-          let totalScoreSum = 0;
-          let passCount = 0;
-          const passingMarksRatio = 0.4;
-          const uniqueStudents = new Set<string>();
-
-          for (const submission of submissionsData) {
-            const exam = examsData.find((e) => e.id === submission.exam_id);
-            if (!exam) continue;
-
-            let correctCount = 0;
-            exam.questions.forEach((q, i) => {
-              if (
-                q.answer.trim().toLowerCase() ===
-                submission.answers[i]?.trim().toLowerCase()
-              ) {
-                correctCount++;
-              }
+        /** ==========================================
+         *  2. Process each teacher (parallel mapping)
+         * ========================================== */
+        const results = await Promise.all(
+          teachers.map(async (teacher: any) => {
+            /** Fetch exams for this teacher's subject */
+            const exams = await pb.collection('exams').getFullList({
+              filter: `subject = "${teacher.subject}"`,
+              fields: 'id, subject, exam_date, total_marks, questions',
             });
 
-            const perQMark = exam.total_marks / exam.questions.length;
-            const score = correctCount * perQMark;
-            totalScoreSum += score;
-
-            uniqueStudents.add(submission.student_id);
-
-            if (score >= exam.total_marks * passingMarksRatio) {
-              passCount++;
+            if (!exams.length) {
+              return {
+                teacherId: teacher.teacher_id,
+                teacherName: `${teacher.first_name} ${teacher.last_name}`,
+                subject: teacher.subject,
+                avgScore: 0,
+                passPercentage: 0,
+                totalStudents: 0,
+                totalExams: 0,
+              };
             }
-          }
 
-          const avgScore = totalScoreSum / submissionsData.length;
-          const passPercentage = (passCount / submissionsData.length) * 100;
+            const examIds = exams.map((e: any) => e.id);
 
-          return {
-            teacherId: teacher.teacher_id,
-            teacherName: `${teacher.first_name} ${teacher.last_name}`,
-            subject: teacher.subject,
-            avgScore: Math.round(avgScore * 100) / 100,
-            passPercentage: Math.round(passPercentage * 100) / 100,
-            totalStudents: uniqueStudents.size,
-            totalExams: examsData.length,
-          };
-        })
-      );
+            /** Fetch submissions for these exams */
+            const submissions = await pb.collection('exam_submissions').getFullList({
+              filter: `exam_id IN (${examIds.map((id) => `"${id}"`).join(',')})`,
+              fields: 'id, exam_id, student_id, answers',
+            });
 
-      setPerformanceData(results);
+            if (!submissions.length) {
+              return {
+                teacherId: teacher.teacher_id,
+                teacherName: `${teacher.first_name} ${teacher.last_name}`,
+                subject: teacher.subject,
+                avgScore: 0,
+                passPercentage: 0,
+                totalStudents: 0,
+                totalExams: exams.length,
+              };
+            }
+
+            // Scoring Logic
+            let totalScoreSum = 0;
+            let passCount = 0;
+            const uniqueStudents = new Set<string>();
+            const passingMarksRatio = 0.4;
+
+            for (const submission of submissions) {
+              const exam = exams.find((e) => e.id === submission.exam_id);
+              if (!exam) continue;
+
+              let correctCount = 0;
+
+              exam.questions.forEach((q: any, i: number) => {
+                if (
+                  q.answer.trim().toLowerCase() ===
+                  submission.answers[i]?.trim().toLowerCase()
+                ) {
+                  correctCount++;
+                }
+              });
+
+              const perQMark = exam.total_marks / exam.questions.length;
+              const score = correctCount * perQMark;
+
+              totalScoreSum += score;
+              uniqueStudents.add(submission.student_id);
+
+              if (score >= exam.total_marks * passingMarksRatio) {
+                passCount++;
+              }
+            }
+
+            const avgScore = totalScoreSum / submissions.length;
+            const passPercentage = (passCount / submissions.length) * 100;
+
+            return {
+              teacherId: teacher.teacher_id,
+              teacherName: `${teacher.first_name} ${teacher.last_name}`,
+              subject: teacher.subject,
+              avgScore: Math.round(avgScore * 100) / 100,
+              passPercentage: Math.round(passPercentage * 100) / 100,
+              totalStudents: uniqueStudents.size,
+              totalExams: exams.length,
+            };
+          })
+        );
+
+        setPerformanceData(results);
+      } catch (err) {
+        console.error('PocketBase Error:', err);
+      }
+
       setLoading(false);
     };
 
-    fetchTeachersAndPerformance();
+    fetchPerformance();
   }, []);
 
   return (
@@ -179,13 +181,8 @@ export default function TeacherPerformanceSummary() {
             />
             <Tooltip />
             <Legend verticalAlign="top" height={36} />
-            <Bar yAxisId="left" dataKey="avgScore" fill="#4f46e5" name="Avg Score" />
-            <Bar
-              yAxisId="right"
-              dataKey="passPercentage"
-              fill="#10b981"
-              name="Pass Percentage (%)"
-            />
+            <Bar yAxisId="left" dataKey="avgScore" name="Avg Score" />
+            <Bar yAxisId="right" dataKey="passPercentage" name="Pass Percentage (%)" />
           </BarChart>
         </ResponsiveContainer>
       )}
