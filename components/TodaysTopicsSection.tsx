@@ -1,35 +1,57 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { TopicWithTeacher } from '@/types';
+import { pb } from '@/lib/pb';
+
+interface TopicWithTeacher {
+  id: string;
+  title: string;
+  subject: string;
+  date: string;
+  teacher?: {
+    id: string;
+    full_name: string;
+    email: string;
+  };
+}
 
 export default function TodaysTopicsSection() {
   const [topics, setTopics] = useState<TopicWithTeacher[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-   const fetchTopics = async () => {
-      const today = new Date().toISOString().split('T')[0];
-      const { data } = await supabase
-        .from('topics')
-        .select(`
-          id,
-          title,
-          subject,
-          date,
-          teacher:teacher_id ( id, full_name, email )
-        `)
-        .eq('date', today);
+    const fetchTopics = async () => {
+      const today = new Date().toISOString().split("T")[0];
 
-     if (data) {
-  const normalized = data.map((topic) => ({
-    ...topic,
-    teacher: Array.isArray(topic.teacher) ? topic.teacher[0] : topic.teacher,
-  }));
+      try {
+        /** 🔥 PocketBase Query with expand */
+        const data = await pb.collection('topics').getFullList({
+          filter: `date = "${today}"`,
+          sort: '-created',
+          expand: 'teacher_id',
+          fields: 'id, title, subject, date, teacher_id',
+        });
 
-  setTopics(normalized as TopicWithTeacher[]);
-}
+        /** Normalize output */
+        const formatted = data.map((topic: any) => ({
+          id: topic.id,
+          title: topic.title,
+          subject: topic.subject,
+          date: topic.date,
+          teacher: topic.expand?.teacher_id
+            ? {
+                id: topic.expand.teacher_id.id,
+                full_name: topic.expand.teacher_id.full_name,
+                email: topic.expand.teacher_id.email,
+              }
+            : null,
+        }));
+
+        setTopics(formatted);
+      } catch (err) {
+        console.error("PocketBase Error:", err);
+      }
+
       setLoading(false);
     };
 
@@ -62,8 +84,8 @@ export default function TodaysTopicsSection() {
                   <td className="p-2">{index + 1}</td>
                   <td className="p-2 font-medium">{topic.title}</td>
                   <td className="p-2">{topic.subject}</td>
-                  <td className="p-2">{topic.teacher?.full_name}</td>
-                  <td className="p-2">{topic.teacher?.email}</td>
+                  <td className="p-2">{topic.teacher?.full_name || "—"}</td>
+                  <td className="p-2">{topic.teacher?.email || "—"}</td>
                 </tr>
               ))}
             </tbody>

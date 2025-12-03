@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import pb from "@/lib/pb";
+import { pb } from "@/lib/pb";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -11,68 +11,79 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
-    if (role === "admin") {
-      if (email === "admin" && password === "admin123") {
-        localStorage.setItem("role", "admin");
-        router.push("/admin");
-      } else {
-        alert("Invalid admin credentials");
-      }
-      return;
-    }
-
     try {
-      // teacher OR student login
-      const auth = await pb.collection(role).authWithPassword(email, password);
+      // ---- FIXED ADMIN LOGIN ----
+      if (role === "admin") {
+        if (email === "admin" && password === "admin123") {
+          localStorage.setItem("role", "admin");
+          router.push("/admin");
+          return;
+        } else {
+          alert("Invalid admin credentials");
+          return;
+        }
+      }
 
-      localStorage.setItem("role", role);
-      localStorage.setItem("userId", auth.record.id);
+      // ---- TEACHER LOGIN ----
+      if (role === "teacher") {
+        const auth = await pb.collection("teachers").authWithPassword(email, password);
 
-      router.push(`/${role}`);
-    } catch (e) {
+        localStorage.setItem("role", "teacher");
+        localStorage.setItem("userId", auth.record.id);
+        router.push("/teacher");
+        return;
+      }
+
+      // ---- STUDENT LOGIN ----
+      if (role === "student") {
+        const auth = await pb.collection("students").authWithPassword(email, password);
+
+        localStorage.setItem("role", "student");
+        localStorage.setItem("userId", auth.record.id);
+        router.push("/student");
+        return;
+      }
+    } catch (err) {
       alert("Invalid credentials");
+      console.error(err);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-100 via-white to-blue-200 px-4">
-      <div className="bg-white shadow-lg rounded-2xl w-full max-w-md p-8 space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+      <div className="bg-white shadow-lg rounded-xl p-8 w-full max-w-md space-y-6">
         <h1 className="text-3xl font-bold text-center text-blue-700">Login</h1>
 
-        <div className="flex flex-col gap-4">
-          <select
-            value={role}
-            onChange={(e) => setRole(e.target.value)}
-            className="border rounded px-4 py-2"
-          >
-            <option value="admin">Admin</option>
-            <option value="teachers">Teacher</option>
-            <option value="students">Student</option>
-          </select>
+        <select
+          value={role}
+          onChange={(e) => setRole(e.target.value)}
+          className="border rounded px-4 py-2 w-full"
+        >
+          <option value="admin">Admin</option>
+          <option value="teacher">Teacher</option>
+          <option value="student">Student</option>
+        </select>
 
-          <input
-            type="text"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="border rounded px-4 py-2"
-          />
+        <input
+          type="text"
+          placeholder="Email"
+          onChange={(e) => setEmail(e.target.value)}
+          className="border rounded px-4 py-2 w-full"
+        />
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="border rounded px-4 py-2"
-          />
+        <input
+          type="password"
+          placeholder="Password"
+          onChange={(e) => setPassword(e.target.value)}
+          className="border rounded px-4 py-2 w-full"
+        />
 
-          <button
-            onClick={handleLogin}
-            className="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded"
-          >
-            Login
-          </button>
-        </div>
+        <button
+          onClick={handleLogin}
+          className="bg-blue-600 hover:bg-blue-700 w-full text-white py-2 rounded"
+        >
+          Login
+        </button>
       </div>
     </div>
   );

@@ -1,109 +1,97 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import bcrypt from 'bcryptjs';
+import { useState } from "react";
+import { pb } from "@/lib/pb";
 
 interface Props {
-  role: 'teachers' | 'students';
+  role: "teachers" | "students";
   onClose: () => void;
 }
-type TeacherOrStudent = {
-  teacher_id?: string;
-  student_id?: string;
-};
 
 export default function AddUserModal({ role, onClose }: Props) {
   const [form, setForm] = useState({
-    first_name: '',
-    last_name: '',
-    email: '',
-    contact: '',
-    address: '',
-    aadhaar: '',
-    alternate_contact: '',
-    education: '',
-    subject: 'Math',
-    password: ''
+    first_name: "",
+    last_name: "",
+    email: "",
+    contact: "",
+    address: "",
+    aadhaar: "",
+    alternate_contact: "",
+    education: "",
+    subject: "Math",
+    password: ""
   });
 
-  const subjects = ['Math', 'English', 'Physics', 'Chemistry', 'IT'];
+  const subjects = ["Math", "English", "Physics", "Chemistry", "IT"];
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const prefixMap: Record<string, string> = {
+    IT: "IT",
+    English: "ENG",
+    Math: "MATH",
+    Physics: "PHY",
+    Chemistry: "CHEM",
+  };
+
+  const handleChange = (e: any) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
   const handleSubmit = async () => {
-    if (!form.password) return alert('Password required');
-    const hashedPassword = await bcrypt.hash(form.password, 10);
+    if (!form.password) return alert("Password is required");
 
-    const prefixMap: Record<string, string> = {
-      IT: 'IT',
-      English: 'ENG',
-      Math: 'MATH',
-      Physics: 'PHY',
-      Chemistry: 'CHEM',
-    };
+    try {
+      const prefix = prefixMap[form.subject];
+      const idField = role === "teachers" ? "teacher_id" : "student_id";
 
-    const prefix = prefixMap[form.subject];
-    const idField = `${role.slice(0, -1)}_id`; // teacher_id or student_id
+      // ---- Get last generated ID ----
+      const records = await pb.collection(role).getFullList({
+        filter: `${idField} ~ "${prefix}"`,
+        sort: `-${idField}`, // Descending
+        perPage: 1
+      });
 
-    const { data: existing, error: fetchError } = await supabase
-      .from(role)
-      .select(idField)
-      .ilike(idField, `${prefix}%`)
-      .order(idField, { ascending: false })
-      .limit(1);
+      let newId = "";
+      if (records.length === 0) {
+        newId = role === "teachers" ? `${prefix}001` : `${prefix}0011`;
+      } else {
+        const lastId = records[0][idField];
+        const num = parseInt(lastId.replace(/\D/g, ""), 10);
+        const next = (num + 1).toString().padStart(3, "0");
+        newId = role === "teachers" ? `${prefix}${next}` : `${prefix}${next}1`;
+      }
 
-    if (fetchError) {
-      alert('Error checking IDs: ' + fetchError.message);
-      return;
-    }
-
-    let newId: string;
-    if (!existing || existing.length === 0) {
-      newId = role === 'teachers' ? `${prefix}001` : `${prefix}0011`;
-    } else {
-const lastId = (existing[0] as TeacherOrStudent)[idField as keyof TeacherOrStudent]!;
-const num = parseInt(lastId.replace(/\D/g, ''), 10);
-
-      const nextNum = (num + 1).toString().padStart(3, '0');
-      newId = role === 'teachers' ? `${prefix}${nextNum}` : `${prefix}${nextNum}1`;
-    }
-
-    const { error } = await supabase.from(role).insert([
-      {
+      // ---- Create Record ----
+      await pb.collection(role).create({
         ...form,
         [idField]: newId,
-        password: hashedPassword,
-      },
-    ]);
+        password: form.password // PB will auto-hash
+      });
 
-    if (error) {
-      alert('Failed to add: ' + error.message);
-    } else {
       alert(`${role.slice(0, -1)} added with ID: ${newId}`);
       onClose();
+    } catch (error) {
+      console.error(error);
+      alert("Failed to add user");
     }
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white dark:bg-gray-900 rounded-xl w-full max-w-lg mx-4 p-6 shadow-xl overflow-y-auto max-h-[90vh]">
-        <h2 className="text-2xl font-semibold text-gray-800 dark:text-white mb-4">
-          Add {role.slice(0, -1).toUpperCase()}
+      <div className="bg-white dark:bg-gray-900 rounded-xl w-full max-w-lg mx-4 p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+          Add {role === "teachers" ? "Teacher" : "Student"}
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {Object.entries(form).map(([field, value]) =>
-            field !== 'password' && field !== 'subject' ? (
+            field !== "subject" && field !== "password" ? (
               <input
                 key={field}
                 name={field}
                 value={value}
                 onChange={handleChange}
-                placeholder={field.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())}
-                className="w-full px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-white"
+                placeholder={field.replace("_", " ").toUpperCase()}
+                className="px-4 py-2 border rounded dark:bg-gray-800 dark:text-white"
               />
             ) : null
           )}
@@ -112,11 +100,11 @@ const num = parseInt(lastId.replace(/\D/g, ''), 10);
             name="subject"
             value={form.subject}
             onChange={handleChange}
-            className="w-full col-span-1 sm:col-span-2 px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-white"
+            className="col-span-2 px-4 py-2 border rounded dark:bg-gray-800 dark:text-white"
           >
-            {subjects.map((subj) => (
-              <option key={subj} value={subj}>
-                {subj}
+            {subjects.map((s) => (
+              <option key={s} value={s}>
+                {s}
               </option>
             ))}
           </select>
@@ -127,20 +115,17 @@ const num = parseInt(lastId.replace(/\D/g, ''), 10);
             placeholder="Password"
             value={form.password}
             onChange={handleChange}
-            className="w-full col-span-1 sm:col-span-2 px-4 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400 dark:bg-gray-800 dark:text-white"
+            className="col-span-2 px-4 py-2 border rounded dark:bg-gray-800 dark:text-white"
           />
         </div>
 
-        <div className="flex justify-end mt-6 space-x-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 border rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-          >
+        <div className="flex justify-end mt-6 gap-3">
+          <button onClick={onClose} className="px-4 py-2 border rounded">
             Cancel
           </button>
           <button
             onClick={handleSubmit}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            className="px-4 py-2 bg-blue-600 text-white rounded"
           >
             Save
           </button>
