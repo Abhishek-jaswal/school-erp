@@ -1,45 +1,36 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
-import bcrypt from 'bcryptjs';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import pb from "@/lib/pb";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [role, setRole] = useState('admin');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [role, setRole] = useState("admin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleLogin = async () => {
-    if (role === 'admin') {
-      if (email === 'admin' && password === 'admin123') {
-        localStorage.setItem('role', 'admin');
-        router.push('/admin');
+    if (role === "admin") {
+      if (email === "admin" && password === "admin123") {
+        localStorage.setItem("role", "admin");
+        router.push("/admin");
       } else {
-        alert('Invalid admin credentials');
+        alert("Invalid admin credentials");
       }
-    } else {
-      const { data, error } = await supabase
-        .from(role === 'teacher' ? 'teachers' : 'students')
-        .select('*')
-        .eq('email', email)
-        .single();
+      return;
+    }
 
-      if (error || !data) {
-        alert('User not found');
-        return;
-      }
+    try {
+      // teacher OR student login
+      const auth = await pb.collection(role).authWithPassword(email, password);
 
-      const match = await bcrypt.compare(password, data.password);
-      if (!match) {
-        alert('Invalid password');
-        return;
-      }
+      localStorage.setItem("role", role);
+      localStorage.setItem("userId", auth.record.id);
 
-      localStorage.setItem('role', role);
-      localStorage.setItem('userId', data.id);
       router.push(`/${role}`);
+    } catch (e) {
+      alert("Invalid credentials");
     }
   };
 
@@ -52,19 +43,19 @@ export default function LoginPage() {
           <select
             value={role}
             onChange={(e) => setRole(e.target.value)}
-            className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="border rounded px-4 py-2"
           >
             <option value="admin">Admin</option>
-            <option value="teacher">Teacher</option>
-            <option value="student">Student</option>
+            <option value="teachers">Teacher</option>
+            <option value="students">Student</option>
           </select>
 
           <input
             type="text"
-            placeholder="Email or Username"
+            placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="border rounded px-4 py-2"
           />
 
           <input
@@ -72,12 +63,12 @@ export default function LoginPage() {
             placeholder="Password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="border rounded px-4 py-2"
           />
 
           <button
             onClick={handleLogin}
-            className="bg-blue-600 hover:bg-blue-700 transition text-white font-semibold py-2 rounded shadow-md"
+            className="bg-blue-600 hover:bg-blue-700 text-white py-2 rounded"
           >
             Login
           </button>
