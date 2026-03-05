@@ -1,93 +1,79 @@
 'use client';
 
-import {  useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Teacher, Student } from '@/types';
+import { useState } from 'react';
+import { pb } from '@/lib/pocketbase';
 
-interface UserProfileModalProps {
-  user: Partial<Teacher> | Partial<Student>;
+interface Props {
+  user: Record<string, string>;
   role: 'teachers' | 'students';
   onClose: () => void;
 }
 
-
-
-export default function UserProfileModal({ user, role, onClose }: UserProfileModalProps) {
-  const [formData, setFormData] = useState(user);
+export default function UserProfileModal({ user, role, onClose }: Props) {
+  const [formData, setFormData] = useState({ ...user });
   const [saving, setSaving] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
 
   const handleSave = async () => {
     setSaving(true);
-    const { error } = await supabase.from(role).update(formData).eq('id', user.id);
+    try {
+      // Only send changed fields
+      const updates: Record<string, string> = {};
+      Object.keys(formData).forEach(k => {
+        if (formData[k] !== user[k]) updates[k] = formData[k];
+      });
+      if (Object.keys(updates).length === 0) {
+        alert('No changes made.');
+        setSaving(false);
+        return;
+      }
+      await pb.collection(role).update(user.id, updates);
+      onClose();
+    } catch (err: unknown) {
+      alert('Update failed: ' + (err as Error).message);
+    }
     setSaving(false);
-    if (!error) onClose();
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-        <h2 className="text-xl font-semibold mb-4">Edit {role.slice(0, -1)} Profile</h2>
+  const fields = [
+    { name: 'first_name', label: 'First Name', type: 'text' },
+    { name: 'last_name', label: 'Last Name', type: 'text' },
+    { name: 'email', label: 'Email', type: 'email' },
+    { name: 'subject', label: 'Subject', type: 'text' },
+    { name: 'contact', label: 'Contact', type: 'text' },
+  ];
 
-        <div className="space-y-3">
-          <input
-            type="text"
-            name="first_name"
-            value={formData.first_name}
-            onChange={handleChange}
-            placeholder="First Name"
-            className="w-full border rounded px-3 py-2"
-          />
-          <input
-            type="text"
-            name="last_name"
-            value={formData.last_name}
-            onChange={handleChange}
-            placeholder="Last Name"
-            className="w-full border rounded px-3 py-2"
-          />
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            placeholder="Email"
-            className="w-full border rounded px-3 py-2"
-          />
-          <input
-            type="text"
-            name="subject"
-            value={formData.subject}
-            onChange={handleChange}
-            placeholder="Subject"
-            className="w-full border rounded px-3 py-2"
-          />
-          <input
-            type="text"
-            name="contact"
-            value={formData.contact}
-            onChange={handleChange}
-            placeholder="Contact"
-            className="w-full border rounded px-3 py-2"
-          />
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md">
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+          <div>
+            <h2 className="font-bold text-[#1e1b4b] text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>
+              Edit Profile
+            </h2>
+            <p className="text-gray-400 text-xs mt-1 capitalize">{role.slice(0, -1)} record</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 transition">✕</button>
         </div>
 
-        <div className="flex justify-end mt-6 space-x-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            {saving ? 'Saving...' : 'Save'}
+        <div className="p-6 space-y-3">
+          {fields.map(({ name, label, type }) => (
+            <div key={name}>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{label}</label>
+              <input type={type} name={name} value={formData[name] || ''} onChange={handleChange}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:bg-white transition"
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="flex justify-end gap-3 p-6 pt-0">
+          <button onClick={onClose} className="px-5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium hover:bg-gray-50 transition">Cancel</button>
+          <button onClick={handleSave} disabled={saving}
+            className="px-5 py-2.5 bg-[#1e1b4b] hover:bg-indigo-900 text-white rounded-xl text-sm font-semibold transition disabled:opacity-50">
+            {saving ? 'Saving...' : 'Save Changes'}
           </button>
         </div>
       </div>

@@ -1,115 +1,105 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Student , Exam } from '@/types';
+import { pb } from '@/lib/pocketbase';
 
-interface Props {
-  student: Student;
+interface Student { id: string; subject: string; }
+interface Exam {
+  id: string; exam_date: string; duration: string; total_marks: number;
+  subject: string; questions: { question: string; options: string[]; answer: string }[];
 }
+interface Props { student: Student; }
 
 export default function ExamView({ student }: Props) {
   const [exams, setExams] = useState<Exam[]>([]);
   const [submittedExamIds, setSubmittedExamIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
-  const today = new Date().toISOString().split('T')[0]; // Format: yyyy-mm-dd
+  const today = new Date().toISOString().split('T')[0];
 
   useEffect(() => {
-    const fetchExams = async () => {
+    const fetchData = async () => {
       setLoading(true);
-
-      // Fetch exams for the student's subject
-      const { data: examsData, error: examErr } = await supabase
-        .from('exams')
-        .select('*')
-        .eq('subject', student.subject)
-        .order('exam_date', { ascending: true });
-
-      // Fetch already submitted exams by the student
-      const { data: submittedData, error: subErr } = await supabase
-        .from('exam_submissions')
-        .select('exam_id')
-        .eq('student_id', student.id);
-
-      if (examErr || subErr) {
-        console.error(examErr || subErr);
-      }
-
-      setExams(examsData || []);
-      setSubmittedExamIds(submittedData?.map((d) => d.exam_id) || []);
+      try {
+        const [examsData, submittedData] = await Promise.all([
+          pb.collection('exams').getFullList({
+            filter: `subject="${student.subject}"`,
+            sort: 'exam_date',
+          }),
+          pb.collection('exam_submissions').getFullList({
+            filter: `student_id="${student.id}"`,
+            fields: 'exam_id',
+          }),
+        ]);
+        setExams(examsData as unknown as Exam[]);
+        setSubmittedExamIds(submittedData.map(d => d['exam_id'] as string));
+      } catch (err) { console.error(err); }
       setLoading(false);
     };
-
-    fetchExams();
+    fetchData();
   }, [student.id, student.subject]);
 
-  // Redirect to exam page with student/exam context saved
   const handleStartExam = (exam: Exam) => {
     localStorage.setItem('activeExam', JSON.stringify({ exam, student }));
     window.location.href = `/student/exam/${exam.id}`;
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6">
-      <h2 className="text-2xl sm:text-3xl font-bold text-center mb-6">
-        Exams - {student.subject}
-      </h2>
-
-      {loading ? (
-        <p className="text-center text-gray-600">Loading exams...</p>
-      ) : exams.length === 0 ? (
-        <p className="text-center text-gray-500">
-          No exams scheduled yet for <strong>{student.subject}</strong>.
-        </p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left border rounded-md overflow-hidden">
-            <thead className="bg-gray-100 text-gray-700">
-              <tr>
-                <th className="px-4 py-2 border"> Date</th>
-                <th className="px-4 py-2 border"> Duration</th>
-                <th className="px-4 py-2 border"> Total Marks</th>
-                <th className="px-4 py-2 border"> Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {exams.map((exam) => {
-                const isToday = exam.exam_date === today;
-                const alreadySubmitted = submittedExamIds.includes(exam.id);
-
-                return (
-                  <tr
-                    key={exam.id}
-                    className="hover:bg-gray-50 text-center border-t"
-                  >
-                    <td className="px-4 py-2 border">{exam.exam_date}</td>
-                    <td className="px-4 py-2 border">{exam.duration}</td>
-                    <td className="px-4 py-2 border">{exam.total_marks}</td>
-                    <td className="px-4 py-2 border">
-                      {alreadySubmitted ? (
-                        <span className="text-green-600 font-semibold">
-                          Submitted
-                        </span>
-                      ) : isToday ? (
-                        <button
-                          onClick={() => handleStartExam(exam)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded transition"
-                        >
-                          Start Exam
-                        </button>
-                      ) : (
-                        <span className="text-gray-400 italic">
-                          Not available
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+    <div className="max-w-3xl">
+      <div className="bg-white rounded-2xl shadow-sm border border-black/5 overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100">
+          <h2 className="font-bold text-[#1e1b4b] text-xl" style={{ fontFamily: "'Playfair Display', serif" }}>
+            📝 Exams — {student.subject}
+          </h2>
+          <p className="text-gray-400 text-sm mt-1">{exams.length} exam{exams.length !== 1 ? 's' : ''} scheduled</p>
         </div>
-      )}
+
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="w-8 h-8 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin" />
+          </div>
+        ) : exams.length === 0 ? (
+          <p className="text-center text-gray-400 py-12 text-sm">No exams scheduled yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  {['Date', 'Duration', 'Total Marks', 'Action'].map(h => (
+                    <th key={h} className="px-5 py-3.5 text-left">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {exams.map(exam => {
+                  const isToday = exam.exam_date === today;
+                  const submitted = submittedExamIds.includes(exam.id);
+                  return (
+                    <tr key={exam.id} className="hover:bg-amber-50/30 transition-colors">
+                      <td className="px-5 py-4 font-medium text-gray-800">{exam.exam_date}</td>
+                      <td className="px-5 py-4 text-gray-500">{exam.duration}</td>
+                      <td className="px-5 py-4 text-gray-500">{exam.total_marks}</td>
+                      <td className="px-5 py-4">
+                        {submitted ? (
+                          <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-semibold px-3 py-1.5 rounded-lg">
+                            ✓ Submitted
+                          </span>
+                        ) : isToday ? (
+                          <button onClick={() => handleStartExam(exam)}
+                            className="bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition shadow-sm">
+                            Start Exam →
+                          </button>
+                        ) : (
+                          <span className="text-gray-400 text-xs italic">Not yet available</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

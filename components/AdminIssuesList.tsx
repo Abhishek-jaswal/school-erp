@@ -1,125 +1,103 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Issue } from '@/types';
+import { pb } from '@/lib/pocketbase';
+
+type Issue = {
+  id: string; user_id: string; role: string; type: string;
+  message: string; status: string; created: string; name?: string;
+};
 
 export default function AdminIssuesList() {
   const [issues, setIssues] = useState<Issue[]>([]);
-  const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
 
-  // Fetch issues on component mount
-  useEffect(() => {
-    fetchIssues();
-  }, []);
+  useEffect(() => { fetchIssues(); }, []);
 
-  // Fetch all issues and enrich with teacher/student names
   const fetchIssues = async () => {
-    const { data: rawIssues } = await supabase
-      .from('issues')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      const raw = await pb.collection('issues').getFullList({ sort: '-created' }) as unknown as Issue[];
 
-    const teachersMap = new Map();
-    const studentsMap = new Map();
+      const [teachers, students] = await Promise.all([
+        pb.collection('teachers').getFullList({ fields: 'id,first_name,last_name' }),
+        pb.collection('students').getFullList({ fields: 'id,first_name,last_name' }),
+      ]);
 
-    // Get teacher names
-    const { data: teachers } = await supabase
-      .from('teachers')
-      .select('id, first_name, last_name');
-    teachers?.forEach((t) => {
-      teachersMap.set(t.id, `${t.first_name} ${t.last_name}`);
-    });
+      const teacherMap = new Map(teachers.map(t => [t.id, `${t['first_name']} ${t['last_name']}`]));
+      const studentMap = new Map(students.map(s => [s.id, `${s['first_name']} ${s['last_name']}`]));
 
-    // Get student names
-    const { data: students } = await supabase
-      .from('students')
-      .select('id, first_name, last_name');
-    students?.forEach((s) => {
-      studentsMap.set(s.id, `${s.first_name} ${s.last_name}`);
-    });
-
-    // Attach names based on role
-    const enriched = rawIssues?.map((i) => ({
-      ...i,
-      name: i.role === 'teacher'
-        ? teachersMap.get(i.user_id)
-        : studentsMap.get(i.user_id),
-    }));
-
-    setIssues(enriched || []);
+      setIssues(raw.map(i => ({
+        ...i,
+        name: i.role === 'teacher' ? teacherMap.get(i.user_id) : studentMap.get(i.user_id),
+      })));
+    } catch (err) { console.error(err); }
   };
 
-  // Update issue status to "resolved"
-  const handleResolve = async (id: number) => {
+  const handleResolve = async (id: string) => {
     setUpdatingId(id);
-    const { error } = await supabase
-      .from('issues')
-      .update({ status: 'resolved' })
-      .eq('id', id);
-
-    if (error) {
-      alert('Failed to update issue');
-    } else {
-      fetchIssues(); // Refresh list
-    }
+    try {
+      await pb.collection('issues').update(id, { status: 'resolved' });
+      fetchIssues();
+    } catch { alert('Failed to update issue'); }
     setUpdatingId(null);
   };
 
   return (
-    <div className="mt-8 p-4 sm:p-6 max-w-6xl mx-auto bg-white shadow rounded-md">
-      <h2 className="text-2xl font-bold mb-4">⚠️ Raised Issues</h2>
+    <div className="space-y-4">
+      <div className="bg-white rounded-2xl shadow-sm border border-black/5 overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100">
+          <h2 className="font-bold text-[#1e1b4b] text-lg" style={{ fontFamily: "'Playfair Display', serif" }}>
+            ⚠️ Raised Issues
+          </h2>
+          <p className="text-gray-400 text-sm mt-1">{issues.length} total</p>
+        </div>
 
-      {/* Responsive table wrapper */}
-      <div className="overflow-x-auto">
-        {issues.length === 0 ? (
-          <p className="text-gray-500">No issues found.</p>
-        ) : (
-          <table className="min-w-[800px] w-full text-sm border">
-            <thead className="bg-gray-100 text-left">
-              <tr>
-                <th className="border px-3 py-2">#</th>
-                <th className="border px-3 py-2">Name</th>
-                <th className="border px-3 py-2">Role</th>
-                <th className="border px-3 py-2">Type</th>
-                <th className="border px-3 py-2">Message</th>
-                <th className="border px-3 py-2">Status</th>
-                <th className="border px-3 py-2">Time</th>
-                <th className="border px-3 py-2">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {issues.map((issue, idx) => (
-                <tr key={issue.id} className="hover:bg-gray-50">
-                  <td className="border px-3 py-2">{idx + 1}</td>
-                  <td className="border px-3 py-2">{issue.name || 'Unknown'}</td>
-                  <td className="border px-3 py-2 capitalize">{issue.role}</td>
-                  <td className="border px-3 py-2">{issue.type}</td>
-                  <td className="border px-3 py-2 max-w-[200px] truncate" title={issue.message}>
-                    {issue.message}
-                  </td>
-                  <td className="border px-3 py-2 capitalize">{issue.status}</td>
-                  <td className="border px-3 py-2 whitespace-nowrap">
-                    {new Date(issue.created_at).toLocaleString()}
-                  </td>
-                  <td className="border px-3 py-2">
-                    {issue.status !== 'resolved' ? (
-                      <button
-                        onClick={() => handleResolve(issue.id)}
-                        disabled={updatingId === issue.id}
-                        className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-xs"
-                      >
-                        {updatingId === issue.id ? 'Updating...' : 'Mark Resolved'}
-                      </button>
-                    ) : (
-                      <span className="text-green-600 font-semibold text-xs">Resolved</span>
-                    )}
-                  </td>
+        <div className="overflow-x-auto">
+          {issues.length === 0 ? (
+            <p className="px-6 py-12 text-center text-gray-400 text-sm">No issues found.</p>
+          ) : (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  {['#', 'Name', 'Role', 'Type', 'Message', 'Status', 'Time', 'Action'].map(h => (
+                    <th key={h} className="px-5 py-3.5 text-left">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {issues.map((issue, idx) => (
+                  <tr key={issue.id} className="hover:bg-indigo-50/30 transition-colors">
+                    <td className="px-5 py-3.5 text-gray-400">{idx + 1}</td>
+                    <td className="px-5 py-3.5 font-medium text-gray-800 whitespace-nowrap">{issue.name || 'Unknown'}</td>
+                    <td className="px-5 py-3.5">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${issue.role === 'teacher' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'}`}>
+                        {issue.role}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-gray-600 whitespace-nowrap">{issue.type}</td>
+                    <td className="px-5 py-3.5 text-gray-600 max-w-[200px] truncate" title={issue.message}>{issue.message}</td>
+                    <td className="px-5 py-3.5">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg ${issue.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                        {issue.status}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-gray-400 whitespace-nowrap text-xs">{new Date(issue.created).toLocaleString()}</td>
+                    <td className="px-5 py-3.5 whitespace-nowrap">
+                      {issue.status !== 'resolved' ? (
+                        <button onClick={() => handleResolve(issue.id)} disabled={updatingId === issue.id}
+                          className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 py-1.5 rounded-lg transition disabled:opacity-50 font-medium">
+                          {updatingId === issue.id ? 'Updating...' : '✓ Resolve'}
+                        </button>
+                      ) : (
+                        <span className="text-green-600 text-xs font-semibold">✓ Done</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
       </div>
     </div>
   );

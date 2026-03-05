@@ -1,158 +1,107 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { pb } from '@/lib/pocketbase';
 import Image from 'next/image';
-import { Student } from '@/types';
 
-interface Props {
-  student: Student;
+interface Teacher {
+  id: string; first_name: string; last_name: string;
+  contact?: string; address?: string; profile_image?: string;
+  subject?: string; email?: string;
 }
+interface Props { teacher: Teacher; }
 
-export default function ProfileSection({ student }: Props) {
+export default function ProfileSection({ teacher }: Props) {
   const [form, setForm] = useState({
-    first_name: student.first_name || '',
-    last_name: student.last_name || '',
-    contact: student.contact || '',
-    address: student.address || '',
-    profile_image: student.profile_image || '',
+    first_name: teacher.first_name || '',
+    last_name: teacher.last_name || '',
+    contact: teacher.contact || '',
+    address: teacher.address || '',
   });
-
   const [loading, setLoading] = useState(false);
+  const [imageUrl, setImageUrl] = useState(
+    teacher.profile_image
+      ? pb.files.getUrl(teacher as Parameters<typeof pb.files.getUrl>[0], teacher.profile_image)
+      : ''
+  );
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, [e.target.name]: e.target.value });
-  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${student.id}.${fileExt}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from('profile-images')
-      .upload(`students/${fileName}`, file, { upsert: true });
-
-    if (uploadError) {
-      alert('Failed to upload image.');
-      return;
-    }
-
-    const { data } = supabase.storage
-      .from('profile-images')
-      .getPublicUrl(`students/${fileName}`);
-
-    setForm((prev) => ({ ...prev, profile_image: data.publicUrl }));
+    try {
+      const fd = new FormData();
+      fd.append('profile_image', file);
+      const updated = await pb.collection('teachers').update(teacher.id, fd);
+      setImageUrl(pb.files.getUrl(updated, updated['profile_image'] as string));
+      alert('Image updated!');
+    } catch (err: unknown) { alert('Upload failed: ' + (err as Error).message); }
   };
 
   const handleSubmit = async () => {
-  setLoading(true);
-  const updates: Partial<Student> = {};
+    setLoading(true);
+    const updates: Record<string, string> = {};
+    (Object.keys(form) as (keyof typeof form)[]).forEach(k => {
+      if (form[k] !== teacher[k as keyof Teacher]) updates[k] = form[k];
+    });
 
-  (Object.keys(form) as (keyof typeof form)[]).forEach((key) => {
-    if (form[key] !== student[key]) {
-      updates[key] = form[key];
+    if (Object.keys(updates).length === 0) {
+      alert('No changes made.');
+      setLoading(false);
+      return;
     }
-  });
-
-  if (Object.keys(updates).length === 0) {
-    alert('No changes made.');
+    try {
+      await pb.collection('teachers').update(teacher.id, updates);
+      alert('Profile updated!');
+    } catch (err: unknown) { alert('Update failed: ' + (err as Error).message); }
     setLoading(false);
-    return;
-  }
-
-  const { error } = await supabase
-    .from('students')
-    .update(updates)
-    .eq('id', student.id);
-
-  if (error) {
-    alert('Update failed: ' + error.message);
-  } else {
-    alert('Profile updated!');
-  }
-
-  setLoading(false);
-};
-
+  };
 
   return (
-    <div className="max-w-3xl mx-auto p-4 sm:p-6 md:p-8 bg-white shadow-md rounded-lg">
-      <h2 className="text-2xl font-bold mb-6 text-center">Edit Profile</h2>
+    <div className="max-w-3xl">
+      <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-6">
+        <h2 className="font-bold text-[#1e1b4b] text-xl mb-6" style={{ fontFamily: "'Playfair Display', serif" }}>
+          👤 Edit Profile
+        </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-1">First Name</label>
-          <input
-            name="first_name"
-            value={form.first_name}
-            onChange={handleChange}
-            className="w-full border rounded-md p-2 focus:outline-none focus:ring focus:border-blue-500"
-            placeholder="First Name"
-          />
+        <div className="flex items-center gap-5 mb-6 pb-6 border-b border-gray-100">
+          {imageUrl ? (
+            <Image src={imageUrl} alt="Profile" width={80} height={80}
+              className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md" />
+          ) : (
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-400 to-indigo-600 flex items-center justify-center text-white text-2xl font-bold shadow-md">
+              {teacher.first_name?.[0]}{teacher.last_name?.[0]}
+            </div>
+          )}
+          <div>
+            <p className="font-semibold text-gray-800">{teacher.first_name} {teacher.last_name}</p>
+            <p className="text-gray-400 text-sm">{teacher.subject} · {teacher.email}</p>
+            <label className="mt-2 inline-block cursor-pointer text-xs font-semibold text-indigo-600 hover:text-indigo-800 transition">
+              Change photo
+              <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+            </label>
+          </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Last Name</label>
-          <input
-            name="last_name"
-            value={form.last_name}
-            onChange={handleChange}
-            className="w-full border rounded-md p-2 focus:outline-none focus:ring focus:border-blue-500"
-            placeholder="Last Name"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {[['first_name', 'First Name'], ['last_name', 'Last Name'], ['contact', 'Contact'], ['address', 'Address']].map(([name, label]) => (
+            <div key={name}>
+              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">{label}</label>
+              <input name={name} value={(form as Record<string, string>)[name]} onChange={handleChange}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:bg-white transition"
+                placeholder={label} />
+            </div>
+          ))}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium mb-1">Contact</label>
-          <input
-            name="contact"
-            value={form.contact}
-            onChange={handleChange}
-            className="w-full border rounded-md p-2 focus:outline-none focus:ring focus:border-blue-500"
-            placeholder="Contact"
-          />
+        <div className="flex justify-end mt-6">
+          <button onClick={handleSubmit} disabled={loading}
+            className="bg-[#1e1b4b] hover:bg-indigo-900 text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50">
+            {loading ? 'Saving...' : 'Save Changes'}
+          </button>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Address</label>
-          <input
-            name="address"
-            value={form.address}
-            onChange={handleChange}
-            className="w-full border rounded-md p-2 focus:outline-none focus:ring focus:border-blue-500"
-            placeholder="Address"
-          />
-        </div>
-      </div>
-
-      <div className="mt-6">
-        <label className="block text-sm font-medium mb-1">Profile Image</label>
-        {form.profile_image && (
-          <Image
-            src={form.profile_image}
-            alt="Profile"
-            className="w-24 h-24 rounded-full object-cover mb-2 border"
-          />
-        )}
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleImageUpload}
-          className="mt-1 text-sm"
-        />
-      </div>
-
-      <div className="mt-6 flex justify-end">
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md transition disabled:opacity-50"
-        >
-          {loading ? 'Saving...' : 'Save Changes'}
-        </button>
       </div>
     </div>
   );

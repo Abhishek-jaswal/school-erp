@@ -1,194 +1,139 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Teacher, Exam, Submission } from '@/types'; // keep your base types
-
+import { pb } from '@/lib/pocketbase';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 
-interface TeacherPerformance {
-  teacherId: string;
-  teacherName: string;
-  subject: string;
-  avgScore: number;
-  passPercentage: number;
-  totalStudents: number;
-  totalExams: number;
+interface TeacherRow { id: string; teacher_id: string; first_name: string; last_name: string; subject: string; }
+interface Question { answer: string; }
+interface ExamRow { id: string; subject: string; total_marks: number; questions: Question[]; }
+interface SubmissionRow { exam_id: string; student_id: string; answers: string[]; }
+interface Performance {
+  teacherName: string; subject: string;
+  avgScore: number; passPercentage: number; totalStudents: number; totalExams: number;
 }
 
-// Narrowed row types for queries to avoid deep type recursion
-type TeacherRow = Pick<Teacher, 'teacher_id' | 'first_name' | 'last_name' | 'subject'>;
-type ExamRow = Pick<Exam, 'id' | 'subject' | 'exam_date' | 'total_marks' | 'questions'>;
-type SubmissionRow = Pick<Submission, 'id' | 'exam_id' | 'student_id' | 'answers'>;
-
 export default function TeacherPerformanceSummary() {
-  const [performanceData, setPerformanceData] = useState<TeacherPerformance[]>([]);
+  const [data, setData] = useState<Performance[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchTeachersAndPerformance = async () => {
+    const fetchData = async () => {
       setLoading(true);
+      try {
+        const teachers = await pb.collection('teachers').getFullList({
+          fields: 'id,teacher_id,first_name,last_name,subject',
+        }) as unknown as TeacherRow[];
 
-      // Fetch all teachers
-      const { data: teachersData, error: teachersError } = await supabase
-        .from('teachers')
-        .select('teacher_id, first_name, last_name, subject')
-        .returns<TeacherRow[]>();
-
-      if (teachersError || !teachersData) {
-        console.error('Error fetching teachers:', teachersError);
-        setLoading(false);
-        return;
-      }
-
-      // Parallelize performance calculation for each teacher
-      const results = await Promise.all(
-        teachersData.map(async (teacher) => {
-          // Fetch exams for this teacher's subject
-          const { data: examsData } = await supabase
-            .from('exams')
-            .select('id, subject, exam_date, total_marks, questions')
-            .eq('subject', teacher.subject)
-            .returns<ExamRow[]>();
-
-          if (!examsData || examsData.length === 0) {
-            return {
-              teacherId: teacher.teacher_id,
+        const results = await Promise.all(
+          teachers.map(async (teacher) => {
+            const base = {
               teacherName: `${teacher.first_name} ${teacher.last_name}`,
               subject: teacher.subject,
-              avgScore: 0,
-              passPercentage: 0,
-              totalStudents: 0,
-              totalExams: 0,
+              avgScore: 0, passPercentage: 0, totalStudents: 0, totalExams: 0,
             };
-          }
 
-          const examIds = examsData.map((e) => e.id);
+            let exams: ExamRow[] = [];
+            try {
+              exams = await pb.collection('exams').getFullList({
+                filter: `subject="${teacher.subject}"`,
+              }) as unknown as ExamRow[];
+            } catch { return { ...base }; }
 
-          // Fetch submissions
-          const { data: submissionsData } = await supabase
-            .from('exam_submissions')
-            .select('id, exam_id, student_id, answers')
-            .in('exam_id', examIds)
-            .returns<SubmissionRow[]>();
+            if (!exams.length) return { ...base };
+            base.totalExams = exams.length;
 
-          if (!submissionsData || submissionsData.length === 0) {
-            return {
-              teacherId: teacher.teacher_id,
-              teacherName: `${teacher.first_name} ${teacher.last_name}`,
-              subject: teacher.subject,
-              avgScore: 0,
-              passPercentage: 0,
-              totalStudents: 0,
-              totalExams: examsData.length,
-            };
-          }
-
-          let totalScoreSum = 0;
-          let passCount = 0;
-          const passingMarksRatio = 0.4;
-          const uniqueStudents = new Set<string>();
-
-          for (const submission of submissionsData) {
-            const exam = examsData.find((e) => e.id === submission.exam_id);
-            if (!exam) continue;
-
-            let correctCount = 0;
-            exam.questions.forEach((q, i) => {
-              if (
-                q.answer.trim().toLowerCase() ===
-                submission.answers[i]?.trim().toLowerCase()
-              ) {
-                correctCount++;
-              }
-            });
-
-            const perQMark = exam.total_marks / exam.questions.length;
-            const score = correctCount * perQMark;
-            totalScoreSum += score;
-
-            uniqueStudents.add(submission.student_id);
-
-            if (score >= exam.total_marks * passingMarksRatio) {
-              passCount++;
+            const allSubs: SubmissionRow[] = [];
+            for (const exam of exams) {
+              try {
+                const subs = await pb.collection('exam_submissions').getFullList({
+                  filter: `exam_id="${exam.id}"`,
+                }) as unknown as SubmissionRow[];
+                allSubs.push(...subs);
+              } catch { /* no subs for this exam */ }
             }
-          }
 
-          const avgScore = totalScoreSum / submissionsData.length;
-          const passPercentage = (passCount / submissionsData.length) * 100;
+            if (!allSubs.length) return { ...base };
 
-          return {
-            teacherId: teacher.teacher_id,
-            teacherName: `${teacher.first_name} ${teacher.last_name}`,
-            subject: teacher.subject,
-            avgScore: Math.round(avgScore * 100) / 100,
-            passPercentage: Math.round(passPercentage * 100) / 100,
-            totalStudents: uniqueStudents.size,
-            totalExams: examsData.length,
-          };
-        })
-      );
+            let totalScore = 0, passCount = 0;
+            const uniqueStudents = new Set<string>();
 
-      setPerformanceData(results);
+            for (const sub of allSubs) {
+              const exam = exams.find(e => e.id === sub.exam_id);
+              if (!exam) continue;
+              let correct = 0;
+              exam.questions.forEach((q, i) => {
+                if (q.answer.trim().toLowerCase() === sub.answers[i]?.trim().toLowerCase()) correct++;
+              });
+              const score = correct * (exam.total_marks / exam.questions.length);
+              totalScore += score;
+              uniqueStudents.add(sub.student_id);
+              if (score >= exam.total_marks * 0.4) passCount++;
+            }
+
+            return {
+              ...base,
+              avgScore: Math.round((totalScore / allSubs.length) * 100) / 100,
+              passPercentage: Math.round((passCount / allSubs.length) * 10000) / 100,
+              totalStudents: uniqueStudents.size,
+            };
+          })
+        );
+
+        setData(results);
+      } catch (err) { console.error(err); }
       setLoading(false);
     };
-
-    fetchTeachersAndPerformance();
+    fetchData();
   }, []);
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <h2 className="text-3xl font-bold mb-6">Teacher Performance Summary</h2>
+    <div className="max-w-5xl space-y-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-6">
+        <h2 className="font-bold text-[#1e1b4b] text-xl mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
+          📊 Teacher Performance Summary
+        </h2>
+        <p className="text-gray-400 text-sm mb-6">Average score and pass rate per teacher</p>
 
-      {loading ? (
-        <p className="text-gray-600">Loading performance data...</p>
-      ) : performanceData.length === 0 ? (
-        <p className="text-gray-500">No teacher data found.</p>
-      ) : (
-        <ResponsiveContainer width="100%" height={400}>
-          <BarChart
-            data={performanceData}
-            margin={{ top: 20, right: 40, left: 20, bottom: 80 }}
-            barCategoryGap="20%"
-          >
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-              dataKey="teacherName"
-              tick={{ fontSize: 12 }}
-              interval={0}
-              angle={-45}
-              textAnchor="end"
-              height={70}
-            />
-            <YAxis yAxisId="left" domain={[0, 100]} />
-            <YAxis
-              yAxisId="right"
-              orientation="right"
-              domain={[0, 100]}
-              tickFormatter={(v) => `${v}%`}
-              tickCount={6}
-            />
-            <Tooltip />
-            <Legend verticalAlign="top" height={36} />
-            <Bar yAxisId="left" dataKey="avgScore" fill="#4f46e5" name="Avg Score" />
-            <Bar
-              yAxisId="right"
-              dataKey="passPercentage"
-              fill="#10b981"
-              name="Pass Percentage (%)"
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      )}
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin" />
+          </div>
+        ) : data.length === 0 ? (
+          <p className="text-center text-gray-400 py-12 text-sm">No data found.</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+              {data.slice(0, 4).map((t, i) => (
+                <div key={i} className="bg-gray-50 border border-gray-100 rounded-2xl p-4 text-center">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 flex items-center justify-center text-white font-bold text-sm mx-auto mb-2">
+                    {t.teacherName.split(' ').map(n => n[0]).join('')}
+                  </div>
+                  <p className="text-xs font-semibold text-gray-700 truncate">{t.teacherName}</p>
+                  <p className="text-xs text-gray-400">{t.subject}</p>
+                  <p className="text-lg font-bold text-indigo-600 mt-1">{t.passPercentage}%</p>
+                  <p className="text-xs text-gray-400">pass rate</p>
+                </div>
+              ))}
+            </div>
+
+            <ResponsiveContainer width="100%" height={380}>
+              <BarChart data={data} margin={{ top: 10, right: 30, left: 0, bottom: 80 }} barCategoryGap="25%">
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis dataKey="teacherName" tick={{ fontSize: 11, fill: '#9ca3af' }} interval={0} angle={-40} textAnchor="end" height={70} />
+                <YAxis yAxisId="left" domain={[0, 100]} tick={{ fontSize: 11, fill: '#9ca3af' }} />
+                <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tickFormatter={v => `${v}%`} tickCount={6} tick={{ fontSize: 11, fill: '#9ca3af' }} />
+                <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 24px rgba(0,0,0,0.1)', fontSize: '12px' }} />
+                <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '12px' }} />
+                <Bar yAxisId="left" dataKey="avgScore" fill="#4f46e5" name="Avg Score" radius={[6, 6, 0, 0]} />
+                <Bar yAxisId="right" dataKey="passPercentage" fill="#10b981" name="Pass %" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </>
+        )}
+      </div>
     </div>
   );
 }
