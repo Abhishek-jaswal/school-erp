@@ -1,5 +1,5 @@
 import Head from 'next/head';
-import LoginPage from "./login/page";
+import UrbanServe from "./UrbanServe.jsx";
 
 
 <Head>
@@ -37,8 +37,8 @@ export const metadata = {
 
 export default function Home() {
   return (
-   <div>
-    <LoginPage/>
-   </div>
+    <div>
+      <UrbanServe />
+    </div>
   );
 }

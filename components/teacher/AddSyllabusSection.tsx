@@ -1,115 +1,86 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Teacher } from '@/types';
+import { pb } from '@/lib/pocketbase';
 
-interface Props {
-  teacher: Teacher;
-}
+interface Teacher { id: string; subject: string; }
+interface Props { teacher: Teacher; }
 
 export default function AddSyllabusSection({ teacher }: Props) {
   const [syllabus, setSyllabus] = useState('');
   const [existingId, setExistingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Fetch existing syllabus for the current teacher
   useEffect(() => {
     const fetchSyllabus = async () => {
       setLoading(true);
-
-      const { data, error } = await supabase
-        .from('syllabus')
-        .select('*')
-        .eq('teacher_id', teacher.id)
-        .single();
-
-      // If data exists, set it to state
-      if (data) {
-        setSyllabus(data.content);
+      try {
+        const data = await pb.collection('syllabus').getFirstListItem(
+          `teacher_id="${teacher.id}"`, { sort: '-created' }
+        );
+        setSyllabus(data['content'] as string || '');
         setExistingId(data.id);
+      } catch {
+        // No syllabus yet — fine
       }
-
-      // Ignore "no rows" error (PGRST116), log other errors
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching syllabus:', error.message);
-      }
-
       setLoading(false);
     };
-
     fetchSyllabus();
   }, [teacher.id]);
 
-  // Handle save or update action
   const handleSave = async () => {
-    if (!syllabus.trim()) {
-      alert('Syllabus cannot be empty.');
-      return;
-    }
-
+    if (!syllabus.trim()) return alert('Syllabus cannot be empty.');
     setLoading(true);
-
-    if (existingId) {
-      // Update existing syllabus
-      const { error } = await supabase
-        .from('syllabus')
-        .update({ content: syllabus })
-        .eq('id', existingId);
-
-      if (error) alert('Update failed: ' + error.message);
-      else alert('Syllabus updated successfully!');
-    } else {
-      // Insert new syllabus
-      const { error } = await supabase.from('syllabus').insert([
-        {
+    try {
+      if (existingId) {
+        await pb.collection('syllabus').update(existingId, { content: syllabus });
+        alert('Syllabus updated successfully!');
+      } else {
+        const record = await pb.collection('syllabus').create({
           teacher_id: teacher.id,
           subject: teacher.subject,
           content: syllabus,
-        },
-      ]);
-
-      if (error) alert('Save failed: ' + error.message);
-      else alert('Syllabus saved!');
+        });
+        setExistingId(record.id);
+        alert('Syllabus saved!');
+      }
+    } catch (err: unknown) {
+      alert('Failed: ' + (err as Error).message);
     }
-
     setLoading(false);
   };
 
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-6 bg-white shadow rounded-lg">
-      {/* Title */}
-      <h2 className="text-2xl font-bold text-gray-800">
-        {existingId ? 'Edit Syllabus' : 'Add Syllabus'}
-      </h2>
+    <div className="max-w-3xl">
+      <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-6">
+        <h2 className="font-bold text-[#1e1b4b] text-xl mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
+          {existingId ? '✏️ Edit Syllabus' : '📚 Add Syllabus'}
+        </h2>
+        <p className="text-gray-400 text-sm mb-5">
+          Subject: <span className="font-semibold text-gray-600">{teacher.subject}</span>
+        </p>
 
-      {/* Subject Info */}
-      <p className="text-sm text-gray-600">
-        Subject: <span className="font-semibold">{teacher.subject}</span>
-      </p>
-
-      {/* Syllabus Text Area */}
-      <textarea
-        value={syllabus}
-        onChange={(e) => setSyllabus(e.target.value)}
-        rows={10}
-        placeholder={`Enter syllabus for ${teacher.subject}...`}
-        className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
-
-      {/* Save/Update Button */}
-      <div className="flex justify-end">
-        <button
-          onClick={handleSave}
-          disabled={loading}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded transition disabled:opacity-60"
-        >
-          {loading
-            ? 'Saving...'
-            : existingId
-            ? 'Update Syllabus'
-            : 'Save Syllabus'}
-        </button>
+        {loading && !syllabus ? (
+          <div className="flex justify-center py-8">
+            <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin" />
+          </div>
+        ) : (
+          <>
+            <textarea
+              value={syllabus}
+              onChange={(e) => setSyllabus(e.target.value)}
+              rows={10}
+              placeholder={`Enter syllabus content for ${teacher.subject}...`}
+              className="w-full border border-gray-200 rounded-xl p-4 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:bg-white resize-y transition"
+            />
+            <div className="flex justify-end mt-4">
+              <button onClick={handleSave} disabled={loading}
+                className={`px-6 py-2.5 rounded-xl text-white text-sm font-semibold transition ${loading ? 'bg-indigo-300 cursor-not-allowed' : 'bg-[#1e1b4b] hover:bg-indigo-900'}`}>
+                {loading ? 'Saving...' : existingId ? 'Update Syllabus' : 'Save Syllabus →'}
+              </button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

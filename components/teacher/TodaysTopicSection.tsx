@@ -1,117 +1,92 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { Teacher } from '@/types'; // ✅ Import type from centralized file
+import { pb } from '@/lib/pocketbase';
 
-interface Props {
-  teacher: Teacher;
-}
+interface Teacher { id: string; subject: string; }
+interface Props { teacher: Teacher; }
 
 export default function TodaysTopicSection({ teacher }: Props) {
   const [topic, setTopic] = useState('');
   const [existingId, setExistingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  // Format today's date (YYYY-MM-DD)
   const today = new Date().toISOString().split('T')[0];
 
-  // Fetch today's topic on component mount
   useEffect(() => {
     const fetchTopic = async () => {
       setLoading(true);
-
-      const { data, error } = await supabase
-        .from('topics')
-        .select('*')
-        .eq('teacher_id', teacher.id)
-        .eq('date', today)
-        .single();
-
-      if (data) {
-        setTopic(data.topic);
+      try {
+        const data = await pb.collection('topics').getFirstListItem(
+          `teacher_id="${teacher.id}" && date="${today}"`
+        );
+        // Support both 'title' and 'topic' field names
+        setTopic((data['title'] || data['topic'] || '') as string);
         setExistingId(data.id);
+      } catch {
+        // No topic today yet
       }
-
-      // Ignore "no row found" error
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching today\'s topic:', error.message);
-      }
-
       setLoading(false);
     };
-
     fetchTopic();
   }, [teacher.id, today]);
 
-  // Save or update topic
   const handleSubmit = async () => {
-    if (!topic.trim()) {
-      alert('Topic cannot be empty.');
-      return;
-    }
-
+    if (!topic.trim()) return alert('Topic cannot be empty.');
     setLoading(true);
-
-    if (existingId) {
-      // Update topic
-      const { error } = await supabase
-        .from('topics')
-        .update({ topic })
-        .eq('id', existingId);
-
-      if (error) alert('Update failed: ' + error.message);
-      else alert('Topic updated successfully!');
-    } else {
-      // Insert new topic
-      const { error } = await supabase.from('topics').insert([
-        {
+    try {
+      if (existingId) {
+        await pb.collection('topics').update(existingId, { title: topic, topic });
+        alert('Topic updated successfully!');
+      } else {
+        const record = await pb.collection('topics').create({
           teacher_id: teacher.id,
           subject: teacher.subject,
+          title: topic,
           topic,
           date: today,
-        },
-      ]);
-
-      if (error) alert('Failed to save: ' + error.message);
-      else alert('Topic saved successfully!');
+        });
+        setExistingId(record.id);
+        alert('Topic saved successfully!');
+      }
+    } catch (err: unknown) {
+      alert('Failed: ' + (err as Error).message);
     }
-
     setLoading(false);
   };
 
   return (
-    <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-6 space-y-6">
-      {/* Header */}
-      <h2 className="text-2xl font-semibold text-gray-800">
-        Today&apos;s  Topic – <span className="text-blue-600 font-medium">{today}</span>
-      </h2>
+    <div className="max-w-3xl">
+      <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-6">
+        <h2 className="font-bold text-[#1e1b4b] text-xl mb-1" style={{ fontFamily: "'Playfair Display', serif" }}>
+          💡 Today's Topic
+        </h2>
+        <p className="text-gray-400 text-sm mb-5">
+          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          {' · '}<span className="font-medium text-gray-600">{teacher.subject}</span>
+        </p>
 
-      {/* Textarea Input */}
-      <textarea
-        value={topic}
-        onChange={(e) => setTopic(e.target.value)}
-        rows={6}
-        className="w-full border border-gray-300 rounded-md p-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-y"
-        placeholder={`Enter topic taught in ${teacher.subject}...`}
-      />
+        <textarea
+          value={topic}
+          onChange={(e) => setTopic(e.target.value)}
+          rows={6}
+          placeholder={`What did you teach in ${teacher.subject} today?`}
+          className="w-full border border-gray-200 rounded-xl p-4 text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-300 focus:bg-white resize-y transition"
+        />
 
-      {/* Action Button */}
-      <button
-        onClick={handleSubmit}
-        disabled={loading}
-        className={`w-full sm:w-auto px-6 py-3 rounded-md text-white font-medium transition-all duration-200 ${
-          loading
-            ? 'bg-gray-400 cursor-not-allowed'
-            : 'bg-blue-600 hover:bg-blue-700'
-        }`}
-      >
-        {loading
-          ? 'Saving...'
-          : existingId
-          ? 'Update Topic'
-          : 'Save Topic'}
-      </button>
+        <div className="flex items-center justify-between mt-4">
+          {existingId && (
+            <span className="text-xs text-green-600 bg-green-50 border border-green-200 px-3 py-1.5 rounded-lg font-medium">
+              ✓ Already submitted today
+            </span>
+          )}
+          <div className="ml-auto">
+            <button onClick={handleSubmit} disabled={loading}
+              className={`px-6 py-2.5 rounded-xl text-white text-sm font-semibold transition ${loading ? 'bg-indigo-300 cursor-not-allowed' : 'bg-[#1e1b4b] hover:bg-indigo-900'}`}>
+              {loading ? 'Saving...' : existingId ? 'Update Topic' : 'Save Topic →'}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,11 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { pb } from '@/lib/pocketbase';
 
-interface Props {
-  subject: string;
-}
+interface Props { subject: string; }
 
 export default function SyllabusView({ subject }: Props) {
   const [syllabus, setSyllabus] = useState<string | null>(null);
@@ -14,39 +12,42 @@ export default function SyllabusView({ subject }: Props) {
   useEffect(() => {
     const fetchSyllabus = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('syllabus')
-        .select('content')
-        .eq('subject', subject)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Failed to fetch syllabus:', error.message);
-      } else {
-        setSyllabus(data?.content || null);
+      try {
+        const result = await pb.collection('syllabus').getFirstListItem(
+          `subject="${subject}"`,
+          { sort: '-created' }
+        );
+        setSyllabus(result['content'] as string || null);
+      } catch {
+        setSyllabus(null);
       }
-
       setLoading(false);
     };
-
     fetchSyllabus();
   }, [subject]);
 
-  if (loading) return <p>Loading syllabus...</p>;
-
   return (
-    <div className="max-w-2xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4">Syllabus - {subject}</h2>
+    <div className="max-w-2xl">
+      <div className="bg-white rounded-2xl shadow-sm border border-black/5 p-6">
+        <h2 className="font-bold text-[#1e1b4b] text-xl mb-5" style={{ fontFamily: "'Playfair Display', serif" }}>
+          📚 Syllabus — {subject}
+        </h2>
 
-      {syllabus ? (
-        <div className="bg-white border p-4 rounded shadow-sm whitespace-pre-wrap">
-          {syllabus}
-        </div>
-      ) : (
-        <p className="text-gray-500">No syllabus uploaded yet.</p>
-      )}
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-500 rounded-full animate-spin" />
+          </div>
+        ) : syllabus ? (
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-5 whitespace-pre-wrap text-sm text-gray-700 leading-relaxed">
+            {syllabus}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <span className="text-5xl block mb-4">📭</span>
+            <p className="text-gray-400 text-sm">No syllabus uploaded yet for {subject}.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
